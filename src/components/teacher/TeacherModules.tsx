@@ -14,7 +14,7 @@ const TeacherModules = () => {
   const [editingModule, setEditingModule] = useState<LearningModule | null>(null);
   
   // Fetch modules
-  const { data: modules, isLoading, refetch } = useQuery({
+  const { data: modules = [], isLoading, refetch } = useQuery({
     queryKey: ['modules'],
     queryFn: moduleService.getModules,
   });
@@ -61,7 +61,7 @@ const TeacherModules = () => {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {modules?.map((module) => (
+          {Array.isArray(modules) && modules.map((module) => (
             <Card key={module.id} className="hover:shadow-md transition-shadow">
               <CardHeader className="pb-2">
                 <CardTitle className="flex items-center">

@@ -1,11 +1,9 @@
-
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { BarChart } from '@/components/ui/chart';
 import { Textarea } from '@/components/ui/textarea';
 import { Calendar, Clock, FileText, Send } from 'lucide-react';
 import { toast } from 'sonner';

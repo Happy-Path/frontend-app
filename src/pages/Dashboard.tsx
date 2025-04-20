@@ -1,16 +1,25 @@
+
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { moduleService, progressService } from '@/services';
+import { moduleService } from '@/services/moduleService';
+import { progressService } from '@/services/progressService';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from "@/hooks/use-toast";
 import EmotionTracker from '@/components/EmotionTracker';
+import { LearningModule, User } from '@/types';
+
+interface ProgressType {
+  completed: boolean;
+  lastAccessed: Date;
+  score?: number;
+}
 
 const Dashboard = () => {
-  const [modules, setModules] = useState([]);
-  const [userProgress, setUserProgress] = useState({});
+  const [modules, setModules] = useState<LearningModule[]>([]);
+  const [userProgress, setUserProgress] = useState<{ [moduleId: string]: ProgressType }>({});
   const [isLoading, setIsLoading] = useState(true);
   const { user } = useAuth();
   const { toast } = useToast();
@@ -26,7 +35,7 @@ const Dashboard = () => {
         // Fetch user progress if logged in
         if (user?.id) {
           const progressData = await progressService.getUserProgress(user.id);
-          const progressByModule = {};
+          const progressByModule: { [moduleId: string]: ProgressType } = {};
           
           progressData.forEach(item => {
             progressByModule[item.moduleId] = {
@@ -53,7 +62,7 @@ const Dashboard = () => {
     fetchData();
   }, [user, toast]);
 
-  const handleEmotionDetected = (emotion, confidence, attentionScore) => {
+  const handleEmotionDetected = (emotion: string, confidence: number, attentionScore: number) => {
     // In a real app, you might want to record this or use it somehow
     console.log(`User emotion detected: ${emotion} (${confidence}), attention: ${attentionScore}`);
   };
@@ -78,7 +87,7 @@ const Dashboard = () => {
                       <div className="flex justify-between items-start">
                         <CardTitle className="text-lg">{module.title}</CardTitle>
                         {userProgress[module.id]?.completed && (
-                          <Badge variant="success" className="bg-green-500">Completed</Badge>
+                          <Badge className="bg-green-500">Completed</Badge>
                         )}
                       </div>
                       <CardDescription>{module.description.substring(0, 80)}...</CardDescription>
@@ -105,7 +114,12 @@ const Dashboard = () => {
               {Object.keys(userProgress).length > 0 ? (
                 <div className="space-y-4">
                   {Object.entries(userProgress)
-                    .sort((a, b) => new Date(b[1].lastAccessed) - new Date(a[1].lastAccessed))
+                    .sort((a, b) => {
+                      // Convert dates to timestamps for comparison
+                      const dateA = a[1].lastAccessed.getTime();
+                      const dateB = b[1].lastAccessed.getTime();
+                      return dateB - dateA;
+                    })
                     .slice(0, 3)
                     .map(([moduleId, progress]) => {
                       const module = modules.find(m => m.id.toString() === moduleId);

@@ -75,7 +75,7 @@ const Index = () => {
             HappyPath - A learning system for children with Down Syndrome
           </p>
           <p className="text-sm">
-            © 2025 SLTC Research University
+            © Happy Path Project
           </p>
         </div>
       </footer>

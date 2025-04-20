@@ -1,41 +1,56 @@
 
 import { ReactNode } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 
 interface ProtectedRouteProps {
   children: ReactNode;
+  allowedRoles?: string[];
 }
 
-const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
+const ProtectedRoute = ({ children, allowedRoles = [] }: ProtectedRouteProps) => {
   const { user, isLoading } = useAuth();
+  const location = useLocation();
 
-  // Show loading spinner while checking authentication
+  // During loading, show nothing
   if (isLoading) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-happy-50">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-happy-700">Loading</h1>
-          <p className="mt-2 text-gray-600">Please wait...</p>
-          <div className="mt-6">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-happy-600 mx-auto"></div>
-          </div>
-        </div>
-      </div>
-    );
+    return null;
   }
 
-  // If not authenticated, redirect to login page
+  // If not logged in, redirect to login immediately
   if (!user) {
-    toast.error("Authentication required", {
-      description: "Please login to access this page",
-    });
-    return <Navigate to="/login" replace />;
+    console.log("User not authenticated, redirecting to login");
+    // Only show toast if not already on login page to avoid infinite loop
+    if (location.pathname !== '/login') {
+      toast.error("Authentication required", {
+        description: "Please login to access this page",
+      });
+    }
+    return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
-  // If authenticated, render the protected component
-  return children;
+  // If no specific roles required or user has the required role, allow access
+  if (allowedRoles.length === 0 || allowedRoles.includes(user.role)) {
+    return children;
+  }
+
+  // If user doesn't have the required role, redirect to their dashboard
+  console.log(`Access denied for role: ${user.role}, required roles: ${allowedRoles.join(', ')}`);
+  toast.error("Access denied", {
+    description: "You don't have permission to access this page",
+  });
+
+  // Role-based redirects
+  const roleBasedRedirect = user.role === 'teacher' 
+    ? '/teacher' 
+    : user.role === 'parent' 
+      ? '/parent'
+      : user.role === 'student'
+        ? '/student/resources'
+        : '/';
+
+  return <Navigate to={roleBasedRedirect} replace />;
 };
 
 export default ProtectedRoute;
