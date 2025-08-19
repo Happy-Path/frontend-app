@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
@@ -31,7 +30,7 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const navigate = useNavigate();
-  const { login, loginWithGoogle } = useAuth();
+  const { login /*, loginWithGoogle */ } = useAuth(); // Remove loginWithGoogle if not supported
 
   const form = useForm({
     defaultValues: {
@@ -40,56 +39,48 @@ const Login = () => {
     },
   });
 
-  const handleRoleBasedRedirect = (role) => {
-    console.log("Redirecting based on role:", role);
-    // Force navigation based on role
-    if (role === 'teacher') {
-      navigate("/teacher", { replace: true });
-      return;
-    } else if (role === 'parent') {
-      navigate("/parent", { replace: true });
-      return;
-    } else {
-      // Default to student dashboard
-      navigate("/", { replace: true });
-      return;
+  const handleRoleBasedRedirect = (role: string) => {
+    switch (role) {
+      case "teacher":
+        navigate("/teacher", { replace: true });
+        break;
+      case "parent":
+        navigate("/parent", { replace: true });
+        break;
+      default:
+        navigate("/", { replace: true });
     }
   };
 
-  const onSubmit = async (values) => {
+  const onSubmit = async (values: { email: string; password: string }) => {
     setIsLoading(true);
     try {
       const user = await login(values.email, values.password);
-      console.log("Login successful, user role:", user.role);
-
       toast("Login successful!", {
         description: `Welcome back, ${user.name}!`,
       });
 
-      // Add a slight delay to ensure state updates complete
       setTimeout(() => {
         handleRoleBasedRedirect(user.role);
       }, 100);
-
-    } catch (error) {
-      console.error("Login error:", error);
+    } catch (error: any) {
       toast("Login failed", {
-        description: "Invalid email or password. Please try again.",
+        description: error.message || "Invalid email or password. Please try again.",
       });
     } finally {
       setIsLoading(false);
     }
   };
 
+  // Optional: Remove this if Google login is not implemented
   const handleGoogleLogin = async () => {
     setIsGoogleLoading(true);
     try {
-      await loginWithGoogle();
-      // OAuth redirect will handle navigation
-    } catch (error) {
-      console.error("Google login error:", error);
+      // Replace with actual implementation or remove if unused
+      // await loginWithGoogle();
+    } catch (error: any) {
       toast("Google login failed", {
-        description: "An error occurred during Google login.",
+        description: error.message || "An error occurred during Google login.",
       });
     } finally {
       setIsGoogleLoading(false);

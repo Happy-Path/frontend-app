@@ -1,51 +1,71 @@
+// Backend user data structure (as received from MongoDB)
+interface BackendUser {
+    _id: string;
+    name: string;
+    email: string;
+    role: "student" | "teacher" | "parent";
+    avatar?: string;
+    createdAt?: string;
+    updatedAt?: string;
+}
 
-// This file now serves as a placeholder for documentation purposes
-// Previously defined TypeScript interfaces are removed
-// The application will rely on JSDoc comments for type hints
+// User interface for frontend use
+export interface User {
+    id: string; // Mapped from MongoDB's _id
+    name: string;
+    email: string;
+    role: "student" | "teacher" | "parent";
+    avatar?: string;
+    createdAt?: string;
+    updatedAt?: string;
+    _id?: string; // Optional: keep for backend compatibility
+}
 
-/**
- * @typedef {Object} User
- * @property {string} id
- * @property {string} name
- * @property {'student' | 'parent' | 'teacher'} role
- * @property {string} [avatar]
- */
+// Auth-related types
+export interface AuthResponse {
+    token: string;
+    message?: string;
+}
 
-/**
- * @typedef {Object} LearningModule
- * @property {string} id
- * @property {string} title
- * @property {string} description
- * @property {'numbers' | 'letters' | 'emotions' | 'colors'} category
- * @property {string} icon
- * @property {'beginner' | 'intermediate' | 'advanced'} level
- * @property {Exercise[]} exercises
- */
+export interface LoginRequest {
+    email: string;
+    password: string;
+}
 
-/**
- * @typedef {Object} Exercise
- * @property {string} id
- * @property {string} title
- * @property {'matching' | 'selection' | 'sorting' | 'recognition'} type
- * @property {string} instructions
- * @property {any} content
- * @property {boolean} completed
- */
+export interface RegisterRequest {
+    name: string;
+    email: string;
+    password: string;
+    role: "student" | "teacher" | "parent";
+}
 
-/**
- * @typedef {Object} Progress
- * @property {string} userId
- * @property {string} moduleId
- * @property {string[]} completedExercises
- * @property {number} score
- * @property {string} lastAccessed
- * @property {EmotionData[]} [emotionData]
- */
+export interface ApiError {
+    message: string;
+    statusCode?: number;
+}
 
-/**
- * @typedef {Object} EmotionData
- * @property {string} timestamp
- * @property {'happy' | 'sad' | 'angry' | 'surprised' | 'neutral'} emotion
- * @property {number} confidence
- * @property {number} attentionScore
- */
+// Learning Module interface
+export interface LearningModule {
+    id: string;
+    title: string;
+    description: string;
+    difficulty: "easy" | "medium" | "hard";
+    duration: number; // in minutes
+    category: string;
+    imageUrl?: string;
+    completionRate?: number;
+    isCompleted?: boolean;
+    createdAt?: string;
+    updatedAt?: string;
+}
+
+// Keep Module as alias for backward compatibility
+export interface Module extends LearningModule {}
+
+export interface Progress {
+    id: string;
+    userId: string;
+    moduleId: string;
+    completionPercentage: number;
+    // Add other progress properties
+}

@@ -1,124 +1,57 @@
-
 import { createContext, useContext, useState, useEffect } from "react";
 import { toast } from "sonner";
-import { supabase } from "@/lib/supabase";
+import { authService } from "@/services/authService";
+import { User } from "@/types";
 
-const AuthContext = createContext(undefined);
+interface AuthContextType {
+  user: User | null;
+  isLoading: boolean;
+  login: (email: string, password: string) => Promise<User>;
+  register: (name: string, email: string, password: string, role: "student" | "teacher" | "parent") => Promise<void>;
+  logout: () => Promise<void>;
+}
 
-export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+  const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Check token and get current user on load
   useEffect(() => {
-    // Set up Supabase auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-        async (event, session) => {
-          if (session) {
-            const { user } = session;
-            // Transform the Supabase user to match our existing user format
-            const transformedUser = {
-              id: user.id,
-              name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
-              email: user.email,
-              role: user.user_metadata?.role || 'student',
-              avatar: user.user_metadata?.avatar_url || '/placeholder.svg'
-            };
-            setUser(transformedUser);
-          } else {
-            setUser(null);
-          }
-          setIsLoading(false);
-        }
-    );
-
-    // Check if there's already a session
-    const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        console.log(session)
-        const { user } = session;
-        // Transform the Supabase user to match our existing user format
-        const transformedUser = {
-          id: user.id,
-          name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
-          email: user.email,
-          role: user.user_metadata?.role || 'student',
-          avatar: user.user_metadata?.avatar_url || '/placeholder.svg'
-        };
-        setUser(transformedUser);
+    const initAuth = async () => {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setIsLoading(false);
+        return;
       }
-      setIsLoading(false);
+
+      try {
+        const userData = await authService.getCurrentUser();
+        setUser(userData);
+      } catch (error) {
+        console.error("Failed to fetch user", error);
+        localStorage.removeItem("token");
+      } finally {
+        setIsLoading(false);
+      }
     };
 
-    checkSession();
-
-    // Cleanup subscription on unmount
-    return () => subscription?.unsubscribe();
+    initAuth();
   }, []);
 
-  const login = async (email, password) => {
+  const login = async (email: string, password: string): Promise<User> => {
     setIsLoading(true);
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+      const userData = await authService.loginUser(email, password);
+      setUser(userData);
+      toast("Login successful", {
+        description: `Welcome back, ${userData.name}`,
       });
-
-      if (error) throw error;
-
-      // For testing purposes, let's use mock users if Supabase isn't configured
-      if (!data || !data.user) {
-        console.log("Using mock user data for testing");
-        // Mock users for testing
-        if (email === "teacher@example.com" && password === "password123") {
-          const mockUser = {
-            id: "teacher-123",
-            name: "Teacher User",
-            email: "teacher@example.com",
-            role: "teacher",
-            avatar: "/placeholder.svg"
-          };
-          setUser(mockUser);
-          return mockUser;
-        } else if (email === "parent@example.com" && password === "password123") {
-          const mockUser = {
-            id: "parent-123",
-            name: "Parent User",
-            email: "parent@example.com",
-            role: "parent",
-            avatar: "/placeholder.svg"
-          };
-          setUser(mockUser);
-          return mockUser;
-        } else if (email === "student@example.com" && password === "password123") {
-          const mockUser = {
-            id: "student-123",
-            name: "Student User",
-            email: "student@example.com",
-            role: "student",
-            avatar: "/placeholder.svg"
-          };
-          setUser(mockUser);
-          return mockUser;
-        } else {
-          throw new Error("Invalid credentials");
-        }
-      }
-
-      // If we have Supabase data, use it
-      const transformedUser = {
-        id: data.user.id,
-        name: data.user.user_metadata?.full_name || data.user.email?.split('@')[0] || 'User',
-        email: data.user.email,
-        role: data.user.user_metadata?.role || 'student',
-        avatar: data.user.user_metadata?.avatar_url || '/placeholder.svg'
-      };
-
-      setUser(transformedUser);
-      return transformedUser;
-    } catch (error) {
+      return userData;
+    } catch (error: any) {
       toast("Login failed", {
-        description: error.message || "Invalid email or password. Please try again."
+        description: error.message || "Invalid credentials",
       });
       throw error;
     } finally {
@@ -126,48 +59,21 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const loginWithGoogle = async () => {
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`
-        }
-      });
-
-      if (error) throw error;
-    } catch (error) {
-      toast("Google login failed", {
-        description: error.message || "Failed to login with Google. Please try again."
-      });
-      throw error;
-    }
-  };
-
-  const register = async (name, email, password, role) => {
+  const register = async (
+      name: string,
+      email: string,
+      password: string,
+      role: "student" | "teacher" | "parent"
+  ): Promise<void> => {
     setIsLoading(true);
     try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            full_name: name,
-            role: role
-          }
-        }
-      });
-
-      if (error) throw error;
-
+      await authService.registerUser(name, email, password, role);
       toast("Registration successful", {
-        description: "Your account has been created successfully. Please check your email for verification."
+        description: "Please login with your new account.",
       });
-
-      return data.user;
-    } catch (error) {
+    } catch (error: any) {
       toast("Registration failed", {
-        description: error.message || "An error occurred during registration. Please try again."
+        description: error.message || "Could not register user",
       });
       throw error;
     } finally {
@@ -177,22 +83,20 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     try {
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
-
+      await authService.logoutUser();
       setUser(null);
       toast("Logged out", {
-        description: "You have been successfully logged out."
+        description: "You have been successfully logged out.",
       });
-    } catch (error) {
+    } catch (error: any) {
       toast("Logout failed", {
-        description: error.message || "Failed to logout. Please try again."
+        description: error.message || "Could not log out",
       });
     }
   };
 
   return (
-      <AuthContext.Provider value={{ user, isLoading, login, loginWithGoogle, register, logout }}>
+      <AuthContext.Provider value={{ user, isLoading, login, register, logout }}>
         {children}
       </AuthContext.Provider>
   );
@@ -200,7 +104,7 @@ export const AuthProvider = ({ children }) => {
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (context === undefined) {
+  if (!context) {
     throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;

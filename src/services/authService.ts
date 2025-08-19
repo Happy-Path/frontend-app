@@ -1,66 +1,137 @@
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
-import { User } from "@/types";
+interface AuthResponse {
+  token: string;
+  message?: string;
+}
 
-export const authService = {
-  getCurrentUser: async (): Promise<User> => {
-    // Simulating API call
-    return new Promise((resolve) => {
-      setTimeout(() => resolve({
-        id: "user-123",
-        name: "Alex",
-        role: "student",
-        avatar: "/placeholder.svg"
-      }), 500);
+import { User } from '@/types';
+
+// Backend user data structure (as received from MongoDB)
+interface BackendUser {
+  _id: string;
+  name: string;
+  email: string;
+  role: "student" | "teacher" | "parent";
+  avatar?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+class AuthService {
+  // Register user
+  async registerUser(
+      name: string,
+      email: string,
+      password: string,
+      role: "student" | "teacher" | "parent"
+  ): Promise<void> {
+    const response = await fetch(`${API_BASE_URL}/auth/register`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ name, email, password, role }),
     });
-  },
-  
-  loginUser: async (email: string, password: string): Promise<User> => {
-    // Simulating API call with basic validation
-    return new Promise((resolve, reject) => {
-      setTimeout(() => {
-        // This is a mock - in a real app, we'd validate credentials properly
-        if (email === "student@example.com" && password === "password123") {
-          resolve({
-            id: "user-123",
-            name: "Alex",
-            role: "student",
-            avatar: "/placeholder.svg"
-          });
-        } else if (email === "teacher@example.com" && password === "password123") {
-          resolve({
-            id: "user-456",
-            name: "Teacher Kim",
-            role: "teacher",
-            avatar: undefined
-          });
-        } else if (email === "parent@example.com" && password === "password123") {
-          resolve({
-            id: "user-789",
-            name: "Parent Taylor",
-            role: "parent",
-            avatar: undefined
-          });
-        } else {
-          reject(new Error("Invalid credentials"));
-        }
-      }, 800);
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || 'Registration failed');
+    }
+  }
+
+  // Login user
+  async loginUser(email: string, password: string): Promise<User> {
+    console.log('Login attempt:', { email, apiUrl: `${API_BASE_URL}/auth/login` });
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      console.log('Login response status:', response.status);
+      console.log('Login response headers:', response.headers);
+
+      const data = await response.json();
+      console.log('Login response data:', data);
+
+      if (!response.ok) {
+        console.error('Login failed with status:', response.status, 'Data:', data);
+        throw new Error(data.message || 'Login failed');
+      }
+
+      // Store token in localStorage
+      localStorage.setItem('token', data.token);
+      console.log('Token stored:', data.token);
+
+      // Get user data after successful login
+      const user = await this.getCurrentUser();
+      console.log('User data retrieved:', user);
+      return user;
+    } catch (error) {
+      console.error('Login error:', error);
+      throw error;
+    }
+  }
+
+  // Get current user
+  async getCurrentUser(): Promise<User> {
+    const token = localStorage.getItem('token');
+
+    if (!token) {
+      throw new Error('No token found');
+    }
+
+    const response = await fetch(`${API_BASE_URL}/auth/me`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
     });
-  },
-  
-  registerUser: async (name: string, email: string, password: string, role: "student" | "parent" | "teacher"): Promise<void> => {
-    // Simulating API call
-    return new Promise((resolve, reject) => {
-      setTimeout(() => {
-        // In a real app, we would create a user in the database
-        console.log(`Registered user: ${name}, ${email}, role: ${role}`);
-        
-        // Simulate potential registration errors
-        if (email === "existing@example.com") {
-          reject(new Error("Email already exists"));
-        } else {
-          resolve();
-        }
-      }, 1000);
-    });
-  },
-};
+
+    const backendUser: BackendUser = await response.json();
+
+    if (!response.ok) {
+      // If token is invalid, remove it
+      localStorage.removeItem('token');
+      throw new Error((backendUser as any).message || 'Failed to get user data');
+    }
+
+    // Map backend user data to frontend User interface
+    const user: User = {
+      id: backendUser._id,
+      name: backendUser.name,
+      email: backendUser.email,
+      role: backendUser.role,
+      avatar: backendUser.avatar || '/placeholder.svg',
+      createdAt: backendUser.createdAt,
+      updatedAt: backendUser.updatedAt,
+      _id: backendUser._id,
+    };
+
+    return user;
+  }
+
+  // Logout user
+  async logoutUser(): Promise<void> {
+    localStorage.removeItem('token');
+  }
+
+  // Check if user is authenticated
+  isAuthenticated(): boolean {
+    return !!localStorage.getItem('token');
+  }
+
+  // Get stored token
+  getToken(): string | null {
+    return localStorage.getItem('token');
+  }
+}
+
+export const authService = new AuthService();
