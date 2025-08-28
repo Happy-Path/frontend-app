@@ -18,7 +18,7 @@ const Header = ({ user: propUser }: HeaderProps) => {
   return (
     <header className="bg-white shadow-md py-4 px-6 flex justify-between items-center rounded-b-xl">
       <Link to="/" className="flex items-center gap-2">
-        <span className="text-3xl font-bold text-happy-600">Happy<span className="text-sunny-500">Path</span></span>
+        <span className="text-3xl font-bold text-happy-600">Happy <span className="text-sunny-500">Path</span></span>
       </Link>
       
       <div className="flex items-center gap-4">

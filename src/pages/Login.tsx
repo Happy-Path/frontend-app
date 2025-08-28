@@ -1,8 +1,7 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { LogIn } from "lucide-react";
-import { FaGoogle } from "react-icons/fa";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -28,9 +27,8 @@ import { toast } from "sonner";
 
 const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const navigate = useNavigate();
-  const { login /*, loginWithGoogle */ } = useAuth(); // Remove loginWithGoogle if not supported
+  const { login } = useAuth();
 
   const form = useForm({
     defaultValues: {
@@ -72,60 +70,18 @@ const Login = () => {
     }
   };
 
-  // Optional: Remove this if Google login is not implemented
-  const handleGoogleLogin = async () => {
-    setIsGoogleLoading(true);
-    try {
-      // Replace with actual implementation or remove if unused
-      // await loginWithGoogle();
-    } catch (error: any) {
-      toast("Google login failed", {
-        description: error.message || "An error occurred during Google login.",
-      });
-    } finally {
-      setIsGoogleLoading(false);
-    }
-  };
-
   return (
       <div className="min-h-screen flex items-center justify-center bg-happy-50 p-4">
         <Card className="max-w-md w-full shadow-xl">
           <CardHeader className="space-y-1 text-center">
             <CardTitle className="text-3xl font-bold text-happy-700">
-              Welcome Back!
+              <span className="text-3xl font-bold text-happy-600">Happy <span className="text-sunny-500">Path</span></span>
             </CardTitle>
             <CardDescription className="text-happy-500 text-lg">
               Login to continue your learning journey
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Button
-                type="button"
-                variant="outline"
-                className="w-full p-6 h-auto text-lg rounded-xl flex items-center justify-center gap-2"
-                onClick={handleGoogleLogin}
-                disabled={isGoogleLoading}
-            >
-              {isGoogleLoading ? (
-                  "Connecting..."
-              ) : (
-                  <>
-                    <FaGoogle className="mr-2 h-5 w-5" /> Continue with Google
-                  </>
-              )}
-            </Button>
-
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <Separator className="w-full" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">
-                Or continue with
-              </span>
-              </div>
-            </div>
-
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <FormField
@@ -164,18 +120,12 @@ const Login = () => {
                     )}
                 />
                 <Button
-                    type="submit"
-                    className="w-full bg-happy-600 hover:bg-happy-700 text-white font-semibold p-6 h-auto text-lg rounded-xl"
-                    disabled={isLoading}
-                >
-                  {isLoading ? (
-                      "Logging in..."
-                  ) : (
-                      <>
-                        <LogIn className="mr-2 h-5 w-5" /> Login with Email
-                      </>
-                  )}
-                </Button>
+                  type="submit"
+                  className="w-full bg-happy-600 hover:bg-happy-700 text-white font-semibold p-6 h-auto text-lg rounded-xl"
+                  disabled={isLoading}
+              >
+                {isLoading ? "Logging in..." : <><LogIn className="mr-2 h-5 w-5" /> Login with Email</>}
+              </Button>
               </form>
             </Form>
           </CardContent>
