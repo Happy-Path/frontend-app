@@ -22,6 +22,7 @@ import TeacherModules from "./pages/teacher/Modules";
 import TeacherAnalytics from "./pages/teacher/Analytics";
 import TeacherNotifications from "./pages/teacher/Notifications";
 import TeacherStudents from "./pages/teacher/Students";
+import TeacherReportsPage from '@/pages/teacher/Reports';
 
 // Parent Routes
 import ParentDashboard from "./pages/parent/Dashboard";
@@ -160,6 +161,13 @@ const App = () => (
                     </ProtectedRoute>
                   }
               />
+
+                <Route
+                    path="/teacher/reports"
+                    element={
+                    <TeacherReportsPage />
+                }
+                />
 
               {/* Catch all route - 404 */}
               <Route path="*" element={<NotFound />} />

@@ -1,5 +1,10 @@
 // src/services/lessonService.ts
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+const API_BASE_URL = (import.meta as any).env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+const join = (b: string, p: string) => `${b.replace(/\/+$/,'')}/${p.replace(/^\/+/, '')}`;
+const auth = () => {
+    const t = localStorage.getItem('token');
+    return t ? { Authorization: `Bearer ${t}` } : {};
+};
 
 function joinUrl(base: string, path: string) {
     return `${base.replace(/\/+$/, '')}/${path.replace(/^\/+/, '')}`;
@@ -89,4 +94,30 @@ export async function deleteLesson(id: string) {
     });
     if (!res.ok) throw new Error((await res.json().catch(() => ({}))).message || 'Failed to delete lesson');
     return true;
+
+
 }
+export const lessonService = {
+    // Always return an array of normalized lessons
+    list: async () => {
+        const res = await fetch(join(API_BASE_URL, `/lessons`), { headers: auth() });
+        if (!res.ok) throw new Error('Failed to load lessons');
+        const data = await res.json();
+
+        // Accept multiple API shapes: [], {items:[]}, {lessons:[]}, {data:[]}
+        const arr =
+            Array.isArray(data) ? data :
+                Array.isArray(data?.items) ? data.items :
+                    Array.isArray(data?.lessons) ? data.lessons :
+                        Array.isArray(data?.data) ? data.data : [];
+
+        // Normalize minimal fields used by the UI
+        return arr.map((l: any) => ({
+            _id: l._id ?? l.id ?? l.lessonId,
+            id: l._id ?? l.id ?? l.lessonId,
+            lessonId: l.lessonId ?? l._id ?? l.id,
+            title: l.title ?? l.name ?? l.goal ?? `Lesson ${l._id ?? l.id}`,
+            video_id: l.video_id ?? l.videoId ?? '',
+        }));
+    }
+};

@@ -8,6 +8,8 @@ import EmotionTracker from '@/components/EmotionTracker';
 import { sessionService } from '@/services/sessionService';
 import { ChevronLeft, ChevronRight, GraduationCap, MoreHorizontal } from 'lucide-react';
 import { progressService } from '@/services/progressService';
+import QuizPlayer from "@/components/student/QuizPlayer";
+
 
 type Lesson = {
     id: string;
@@ -400,6 +402,12 @@ export default function StudentLessonPlayer() {
                                 onTrackingChange={onTrackingChange}
                             />
                         </Card>
+
+                        <Card className="mt-6 p-3">
+                            <h3 className="text-lg font-semibold mb-2">Lesson Quiz</h3>
+                            <QuizPlayer lessonId={data.id} />
+                        </Card>
+
                     </div>
                 </div>
             </div>
