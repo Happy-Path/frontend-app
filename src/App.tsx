@@ -15,6 +15,8 @@ import About from "./pages/About";
 import AuthCallback from "./pages/AuthCallback";
 import { AuthProvider } from "./contexts/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
+import RoleLanding from "@/components/RoleLanding";
+import AdminDashboard from "@/pages/admin/AdminDashboard";
 
 // Teacher Routes
 import TeacherDashboard from "./pages/teacher/Dashboard";
@@ -168,6 +170,51 @@ const App = () => (
                     <TeacherReportsPage />
                 }
                 />
+
+                <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<Register />} />
+                <Route path="/auth/callback" element={<AuthCallback />} />
+
+                
+                      {/* Protected: role landing (auto-redirects by role) */}
+                      <Route
+                        path="/dashboard"
+                        element={
+                          <ProtectedRoute>
+                            <RoleLanding />
+                          </ProtectedRoute>
+                        }
+                      />
+
+                      {/* Keep your existing root index protected if desired */}
+                      <Route
+                        path="/"
+                        element={
+                          <ProtectedRoute>
+                            <Index />
+                          </ProtectedRoute>
+                        }
+                      />
+
+                      {/* Admin */}
+                      <Route
+                        path="/admin/*"
+                        element={
+                          <ProtectedRoute allowedRoles={["admin"]}>
+                            <AdminDashboard />
+                          </ProtectedRoute>
+                        }
+                      />
+
+                      {/* Teacher */}
+                      <Route
+                        path="/teacher/*"
+                        element={
+                          <ProtectedRoute allowedRoles={["teacher"]}>
+                            <TeacherDashboard />
+                          </ProtectedRoute>
+                        }
+                      />
 
               {/* Catch all route - 404 */}
               <Route path="*" element={<NotFound />} />

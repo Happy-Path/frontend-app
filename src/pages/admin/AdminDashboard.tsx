@@ -1,0 +1,55 @@
+// src/pages/admin/AdminDashboard.tsx
+import { useState } from "react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import Header from "@/components/Header";
+import { useAuth } from "@/contexts/AuthContext";
+import AdminUsers from "@/components/admin/AdminUsers"; // from previous step
+
+export default function AdminDashboard() {
+  const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState("users");
+
+  if (user?.role !== "admin") {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center">
+        <h1 className="text-2xl font-semibold text-red-600">Access Denied</h1>
+        <p className="mt-2">You need admin access to view this page.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <Header user={user} />
+      <main className="container px-4 py-6 max-w-7xl">
+        <div className="flex items-center justify-between mb-8">
+          <h1 className="text-3xl font-bold text-gray-800">Admin Dashboard</h1>
+        </div>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <TabsList className="grid w-full grid-cols-4 rounded-lg bg-happy-50">
+            <TabsTrigger value="users">Users</TabsTrigger>
+            <TabsTrigger value="analytics">Analytics</TabsTrigger>
+            <TabsTrigger value="reports">Reports</TabsTrigger>
+            <TabsTrigger value="system">System</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="users" className="space-y-6">
+            <AdminUsers />
+          </TabsContent>
+
+          <TabsContent value="analytics" className="space-y-6">
+            <div className="text-gray-600">Coming soon…</div>
+          </TabsContent>
+
+          <TabsContent value="reports" className="space-y-6">
+            <div className="text-gray-600">Coming soon…</div>
+          </TabsContent>
+
+          <TabsContent value="system" className="space-y-6">
+            <div className="text-gray-600">Coming soon…</div>
+          </TabsContent>
+        </Tabs>
+      </main>
+    </div>
+  );
+}

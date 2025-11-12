@@ -1,3 +1,4 @@
+// src/contexts/AuthContext.tsx
 import { createContext, useContext, useState, useEffect } from "react";
 import { toast } from "sonner";
 import { authService } from "@/services/authService";
@@ -17,14 +18,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Check token and get current user on load
   useEffect(() => {
     const initAuth = async () => {
       const token = localStorage.getItem("token");
-      if (!token) {
-        setIsLoading(false);
-        return;
-      }
+      if (!token) return setIsLoading(false);
 
       try {
         const userData = await authService.getCurrentUser();
@@ -36,45 +33,31 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setIsLoading(false);
       }
     };
-
     initAuth();
   }, []);
 
   const login = async (email: string, password: string): Promise<User> => {
     setIsLoading(true);
     try {
-      const userData = await authService.loginUser(email, password);
+      const userData = await authService.loginUser(email, password); // returns user
       setUser(userData);
-      toast("Login successful", {
-        description: `Welcome back, ${userData.name}`,
-      });
+      toast("Login successful", { description: `Welcome back, ${userData.name}` });
       return userData;
     } catch (error: any) {
-      toast("Login failed", {
-        description: error.message || "Invalid credentials",
-      });
+      toast("Login failed", { description: error?.response?.data?.message || "Invalid credentials" });
       throw error;
     } finally {
       setIsLoading(false);
     }
   };
 
-  const register = async (
-      name: string,
-      email: string,
-      password: string,
-      role: "student" | "teacher" | "parent"
-  ): Promise<void> => {
+  const register = async (name: string, email: string, password: string, role: "student" | "teacher" | "parent") => {
     setIsLoading(true);
     try {
       await authService.registerUser(name, email, password, role);
-      toast("Registration successful", {
-        description: "Please login with your new account.",
-      });
+      toast("Registration successful", { description: "Please login with your new account." });
     } catch (error: any) {
-      toast("Registration failed", {
-        description: error.message || "Could not register user",
-      });
+      toast("Registration failed", { description: error?.response?.data?.message || "Could not register user" });
       throw error;
     } finally {
       setIsLoading(false);
@@ -82,30 +65,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const logout = async () => {
-    try {
-      await authService.logoutUser();
-      setUser(null);
-      toast("Logged out", {
-        description: "You have been successfully logged out.",
-      });
-    } catch (error: any) {
-      toast("Logout failed", {
-        description: error.message || "Could not log out",
-      });
-    }
+    await authService.logoutUser();
+    setUser(null);
+    toast("Logged out", { description: "You have been successfully logged out." });
   };
 
   return (
-      <AuthContext.Provider value={{ user, isLoading, login, register, logout }}>
-        {children}
-      </AuthContext.Provider>
+    <AuthContext.Provider value={{ user, isLoading, login, register, logout }}>
+      {children}
+    </AuthContext.Provider>
   );
 };
 
 export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
-  return context;
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error("useAuth must be used within an AuthProvider");
+  return ctx;
 };
