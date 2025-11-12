@@ -8,7 +8,12 @@ interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<User>;
-  register: (name: string, email: string, password: string, role: "student" | "teacher" | "parent") => Promise<void>;
+  register: (
+      name: string,
+      email: string,
+      password: string,
+      role: "student" | "teacher" | "parent"
+  ) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -21,7 +26,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     const initAuth = async () => {
       const token = localStorage.getItem("token");
-      if (!token) return setIsLoading(false);
+      if (!token) {
+        setIsLoading(false);
+        return;
+      }
 
       try {
         const userData = await authService.getCurrentUser();
@@ -29,6 +37,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       } catch (error) {
         console.error("Failed to fetch user", error);
         localStorage.removeItem("token");
+        localStorage.removeItem("role");
+        localStorage.removeItem("userId");
       } finally {
         setIsLoading(false);
       }
@@ -39,7 +49,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const login = async (email: string, password: string): Promise<User> => {
     setIsLoading(true);
     try {
-      const userData = await authService.loginUser(email, password); // returns user
+      // Expect authService.loginUser to also set token in localStorage
+      const userData = await authService.loginUser(email, password);
+
+      // Helpful extras for role-based redirects, etc.
+      if ((userData as any)?.role) localStorage.setItem("role", (userData as any).role);
+      if ((userData as any)?._id) localStorage.setItem("userId", (userData as any)._id);
+
       setUser(userData);
       toast("Login successful", { description: `Welcome back, ${userData.name}` });
       return userData;
@@ -51,7 +67,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  const register = async (name: string, email: string, password: string, role: "student" | "teacher" | "parent") => {
+  const register = async (
+      name: string,
+      email: string,
+      password: string,
+      role: "student" | "teacher" | "parent"
+  ) => {
     setIsLoading(true);
     try {
       await authService.registerUser(name, email, password, role);
@@ -65,15 +86,25 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const logout = async () => {
-    await authService.logoutUser();
-    setUser(null);
-    toast("Logged out", { description: "You have been successfully logged out." });
+    try {
+      await authService.logoutUser(); // server-side logout if available
+    } catch (error: any) {
+      // Not fatal—continue to clear local state
+      console.warn("Logout error:", error?.message || error);
+      toast("Logout failed", { description: error?.message || "Logging you out locally." });
+    } finally {
+      setUser(null);
+      localStorage.removeItem("token");
+      localStorage.removeItem("role");
+      localStorage.removeItem("userId");
+      toast("Logged out", { description: "You have been successfully logged out." });
+    }
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, register, logout }}>
-      {children}
-    </AuthContext.Provider>
+      <AuthContext.Provider value={{ user, isLoading, login, register, logout }}>
+        {children}
+      </AuthContext.Provider>
   );
 };
 
