@@ -1,4 +1,3 @@
-
 import { LearningModule, User } from '@/types';
 import type { InferResponse } from '@/types/telemetry';
 
@@ -15,9 +14,9 @@ class ApiClient {
   }
 
   private async handle<T>(resp: Response): Promise<T> {
-    const data = await resp.json();
-    if (!resp.ok) throw new Error(data.message || 'Request failed');
-    return data;
+    const data = await resp.json().catch(() => ({} as T));
+    if (!resp.ok) throw new Error((data as any)?.message || 'Request failed');
+    return data as T;
   }
 
   // ---------- Generic helpers ----------
@@ -41,6 +40,16 @@ class ApiClient {
   async put<T>(endpoint: string, body: any): Promise<T> {
     const resp = await fetch(`${API_BASE_URL}${endpoint}`, {
       method: 'PUT',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify(body),
+    });
+    return this.handle<T>(resp);
+  }
+
+  // ✅ Add PATCH support
+  async patch<T>(endpoint: string, body: any): Promise<T> {
+    const resp = await fetch(`${API_BASE_URL}${endpoint}`, {
+      method: 'PATCH',
       headers: this.getAuthHeaders(),
       body: JSON.stringify(body),
     });
@@ -81,10 +90,6 @@ class ApiClient {
   }
 
   // ---------- NEW: Sessions/Telemetry/ML ----------
-  /**
-   * Start a learning session for the current (student) user.
-   * Returns the created session document.
-   */
   async startSession(lessonId?: string): Promise<{ _id: string }> {
     return this.post<{ _id: string }>('/sessions', {
       lessonId,
@@ -92,18 +97,10 @@ class ApiClient {
     });
   }
 
-  /**
-   * Log either an attention or emotion event.
-   * `body` can be a single event or an array of events.
-   */
   async logEvent(sessionId: string, body: any): Promise<{ inserted: number }> {
     return this.post<{ inserted: number }>(`/sessions/${sessionId}/events`, body);
   }
 
-  /**
-   * Call the Flask model for inference.
-   * No auth header required here (unless your Flask API enforces it).
-   */
   async infer(frameBase64: string, sessionId: string): Promise<InferResponse> {
     const resp = await fetch(`${ML_BASE_URL}/infer`, {
       method: 'POST',
@@ -113,7 +110,6 @@ class ApiClient {
     return this.handle<InferResponse>(resp);
   }
 
-  // ---------- NEW: Reports ----------
   async getDailyReport(userId: string, from?: string, to?: string): Promise<any[]> {
     const qs = new URLSearchParams();
     if (from) qs.set('from', from);
@@ -131,5 +127,4 @@ class ApiClient {
 }
 
 export const apiClient = new ApiClient();
-// legacy named export kept
 export const api = apiClient;

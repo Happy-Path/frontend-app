@@ -1,3 +1,4 @@
+// src/components/Header.tsx
 import React from 'react';
 import { User } from "@/types";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -17,7 +18,7 @@ export function MessagesBadge() {
     const { data } = useQuery({
         queryKey: ["unread"],
         queryFn: messageService.unreadCount,
-        refetchInterval: 10000,
+        refetchInterval: 1000,
     });
     const count = data?.count ?? 0;
 
@@ -67,7 +68,7 @@ const Header = ({ user: propUser }: HeaderProps) => {
     return (
         <header className="bg-white shadow-md py-4 px-6 flex justify-between items-center rounded-b-xl">
             {/* Logo */}
-            <Link to="/" className="flex items-center gap-2">
+            <Link to="/dashboard" className="flex items-center gap-2">
         <span className="text-3xl font-bold text-happy-600">
           Happy <span className="text-sunny-500">Path</span>
         </span>
@@ -81,7 +82,8 @@ const Header = ({ user: propUser }: HeaderProps) => {
                     asChild
                     className="rounded-full hover:bg-happy-100"
                 >
-                    <Link to="/" title="Home">
+                    {/* 👇 Home now goes to /dashboard so it routes by role */}
+                    <Link to="/dashboard" title="Home">
                         <Home className="h-5 w-5 text-happy-600" />
                     </Link>
                 </Button>

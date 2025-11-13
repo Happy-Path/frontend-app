@@ -1,9 +1,10 @@
+// src/types/index.ts
 // Backend user data structure (as received from MongoDB)
 interface BackendUser {
     _id: string;
     name: string;
     email: string;
-    role: "student" | "teacher" | "parent";
+    role: "student" | "teacher" | "parent"| "admin";
     avatar?: string;
     createdAt?: string;
     updatedAt?: string;
@@ -14,7 +15,7 @@ export interface User {
     id: string; // Mapped from MongoDB's _id
     name: string;
     email: string;
-    role: "student" | "teacher" | "parent";
+    role: "student" | "teacher" | "parent"| "admin";
     avatar?: string;
     createdAt?: string;
     updatedAt?: string;
@@ -69,3 +70,5 @@ export interface Progress {
     completionPercentage: number;
     // Add other progress properties
 }
+
+export type Role = "student" | "teacher" | "parent" | "admin";
