@@ -138,7 +138,7 @@ export default function AdminTabsUsers() {
                 <div className="flex items-end">
                     <Button className="w-full" onClick={() => setCreateOpen(true)}>
                         <Plus className="mr-2 h-4 w-4" />
-                        + Create a User
+                        Create an User
                     </Button>
                 </div>
             </Card>

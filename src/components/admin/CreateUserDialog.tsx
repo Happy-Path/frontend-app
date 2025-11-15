@@ -49,7 +49,7 @@ export default function CreateUserDialog({
     return (
         <DialogContent className="max-w-md">
             <DialogHeader>
-                <DialogTitle>Create User</DialogTitle>
+                <DialogTitle>Create an User</DialogTitle>
             </DialogHeader>
 
             <form className="space-y-3" onSubmit={handleSubmit}>
