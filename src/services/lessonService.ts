@@ -36,7 +36,7 @@ export async function listLessons(params?: { status?: string; page?: number; lim
     });
     if (!res.ok) throw new Error((await res.json().catch(() => ({}))).message || 'Failed to load lessons');
 
-    const json = await res.json(); // { items, total, page, pages }
+    const json = await res.json();
     const items = (json.items || []).map((l: any) => ({ id: l._id, ...l }));
     return { ...json, items };
 }
@@ -65,14 +65,12 @@ export async function updateLesson(id: string, payload: CreateLessonPayload) {
     return { lesson: { id: lesson._id, ...lesson } };
 }
 
-// List only published lessons (for students/children)
 export async function listPublishedLessons(params?: { category?: string; page?: number; limit?: number }) {
-    const token = localStorage.getItem('token'); // child's or parent's JWT
+    const token = localStorage.getItem('token');
     const q = new URLSearchParams();
-    q.set('status', 'published'); // only published lessons
+    q.set('status', 'published');
     if (params?.page) q.set('page', String(params.page));
     if (params?.limit) q.set('limit', String(params.limit));
-    // category can be filtered client-side (simpler, fewer backend changes)
 
     const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
     const url = `${base.replace(/\/+$/, '')}/lessons?${q.toString()}`;
@@ -80,12 +78,11 @@ export async function listPublishedLessons(params?: { category?: string; page?: 
     const res = await fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
     if (!res.ok) throw new Error((await res.json().catch(() => ({}))).message || 'Failed to load lessons');
 
-    const json = await res.json(); // { items, total, page, pages }
+    const json = await res.json();
     const items = (json.items || []).map((l: any) => ({ id: l._id, ...l }));
     return { ...json, items };
 }
 
-// (needs backend DELETE /api/lessons/:id)
 export async function deleteLesson(id: string) {
     const token = getAuthToken();
     const res = await fetch(joinUrl(API_BASE_URL, `/lessons/${id}`), {
@@ -94,24 +91,21 @@ export async function deleteLesson(id: string) {
     });
     if (!res.ok) throw new Error((await res.json().catch(() => ({}))).message || 'Failed to delete lesson');
     return true;
-
-
 }
+
+// Existing flexible lessonService
 export const lessonService = {
-    // Always return an array of normalized lessons
     list: async () => {
         const res = await fetch(join(API_BASE_URL, `/lessons`), { headers: auth() });
         if (!res.ok) throw new Error('Failed to load lessons');
         const data = await res.json();
 
-        // Accept multiple API shapes: [], {items:[]}, {lessons:[]}, {data:[]}
         const arr =
             Array.isArray(data) ? data :
                 Array.isArray(data?.items) ? data.items :
                     Array.isArray(data?.lessons) ? data.lessons :
                         Array.isArray(data?.data) ? data.data : [];
 
-        // Normalize minimal fields used by the UI
         return arr.map((l: any) => ({
             _id: l._id ?? l.id ?? l.lessonId,
             id: l._id ?? l.id ?? l.lessonId,
@@ -120,4 +114,13 @@ export const lessonService = {
             video_id: l.video_id ?? l.videoId ?? '',
         }));
     }
+};
+
+// --- Added Section ---
+import { api } from "./api";
+
+export const lessonServiceApi = {
+    getLessons() {
+        return api.get("/lessons");
+    },
 };

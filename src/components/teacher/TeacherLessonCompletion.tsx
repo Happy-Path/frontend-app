@@ -1,3 +1,4 @@
+// src/components/teacher/TeacherLessonCompletion.tsx
 import { useQuery } from '@tanstack/react-query';
 import { reportsService } from '@/services/reportsService';
 import { Card } from '@/components/ui/card';

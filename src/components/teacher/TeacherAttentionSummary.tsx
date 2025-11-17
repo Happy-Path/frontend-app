@@ -1,3 +1,4 @@
+// src/components/teacher/TeacherAttentionSummary.tsx
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { reportsService } from '@/services/reportsService';

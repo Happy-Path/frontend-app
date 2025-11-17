@@ -1,3 +1,4 @@
+// src/pages/parent/Dashboard.tsx
 import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Header from '@/components/Header';

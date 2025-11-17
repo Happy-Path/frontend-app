@@ -1,3 +1,4 @@
+// src/pages/teacher/Reports.tsx
 import { useState, useMemo } from 'react';
 import Header from '@/components/Header';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
