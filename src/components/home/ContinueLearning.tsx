@@ -4,12 +4,18 @@ import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
+    CardDescription,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { api } from "@/services/api";
-import { reportsService } from "@/services/reportsService";
+import { progressService } from "@/services/progressService";
 
 type Lesson = {
     _id: string;
@@ -32,7 +38,7 @@ type ProgressRow = {
     _id?: string;
     userId: string;
     lessonId: string;
-    percent?: number;
+    percent?: number; // 0..100 from backend
     completed?: boolean;
     durationSec?: number;
     positionSec?: number;
@@ -41,9 +47,10 @@ type ProgressRow = {
 
 const ContinueLearning: React.FC = () => {
     const { user } = useAuth();
+    const navigate = useNavigate();
     const scrollRef = useRef<HTMLDivElement | null>(null);
 
-    // --- Load lessons (we only care about published) ---
+    // --- Load lessons (published only) ---
     const {
         data: lessonsResp,
         isLoading: lessonsLoading,
@@ -55,18 +62,18 @@ const ContinueLearning: React.FC = () => {
 
     const lessons = lessonsResp?.items ?? [];
 
-    // --- Load progress for the current student ---
+    const hasToken =
+        typeof window !== "undefined" && !!localStorage.getItem("token");
+
+    // --- Load progress for the current student from /progress/me ---
     const {
         data: progressRows = [],
         isLoading: progressLoading,
         isError: progressError,
     } = useQuery<ProgressRow[]>({
-        queryKey: ["continue-progress", user?.id],
-        queryFn: () => {
-            if (!user?.id) return Promise.resolve([] as ProgressRow[]);
-            return reportsService.progressByUser(user.id);
-        },
-        enabled: !!user?.id,
+        queryKey: ["continue-progress-me"],
+        queryFn: () => progressService.getMyProgress(),
+        enabled: hasToken, // ensures API is called after login
     });
 
     // Index progress by lessonId
@@ -79,26 +86,50 @@ const ContinueLearning: React.FC = () => {
         return map;
     }, [progressRows]);
 
-    // Decide which lessons are "uncompleted"
+    // Compute list of "started but not completed" lessons
     const uncompletedLessons = useMemo(() => {
         if (!lessons.length) return [];
 
         return lessons
             .map((lesson) => {
                 const prog = progressByLessonId[lesson._id];
-                const pct = Math.round(prog?.percent ?? 0);
 
-                const isCompleted = prog ? pct >= 100 || prog.completed === true : false;
+                // Derive percent:
+                // 1) Prefer backend 'percent' if present
+                // 2) Fallback to positionSec/durationSec if needed
+                let rawPercent = 0;
+
+                if (prog && typeof prog.percent === "number") {
+                    rawPercent = prog.percent;
+                } else if (
+                    prog &&
+                    typeof prog.positionSec === "number" &&
+                    typeof prog.durationSec === "number" &&
+                    prog.durationSec > 0
+                ) {
+                    rawPercent = Math.round(
+                        (prog.positionSec / prog.durationSec) * 100
+                    );
+                }
+
+                const percent = Math.min(100, Math.max(0, Math.round(rawPercent)));
+
+                const isStarted = !!prog && percent > 0;
+                const isCompleted = !!prog && (percent >= 98 || prog.completed === true);
 
                 return {
                     lesson,
                     progress: prog,
-                    percent: Math.min(100, Math.max(0, pct)),
+                    percent,
+                    isStarted,
                     isCompleted,
                 };
             })
-            .filter((row) => !row.isCompleted) // only not completed
-            // Optional: show ones closest to completion first
+            // ✅ Only show lessons:
+            // - with some progress (percent > 0)
+            // - and not completed (percent < 98 and !completed)
+            .filter((row) => row.isStarted && !row.isCompleted)
+            // Show those closest to completion first
             .sort((a, b) => b.percent - a.percent);
     }, [lessons, progressByLessonId]);
 
@@ -111,6 +142,11 @@ const ContinueLearning: React.FC = () => {
         scrollRef.current.scrollBy({ left: delta, behavior: "smooth" });
     };
 
+    const handleContinueClick = (lessonId: string) => {
+        // ✅ Use the correct route: /student/lesson/:id
+        navigate(`/student/lesson/${lessonId}`);
+    };
+
     return (
         <div className="bg-white p-6 rounded-xl shadow-md mb-6">
             <div className="flex items-center justify-between mb-4">
@@ -119,7 +155,7 @@ const ContinueLearning: React.FC = () => {
                         Continue Learning
                     </h2>
                     <p className="text-xs text-muted-foreground">
-                        Lessons you&apos;ve started or not finished yet.
+                        Lessons you&apos;ve started but not finished yet.
                     </p>
                 </div>
             </div>
@@ -197,8 +233,13 @@ const ContinueLearning: React.FC = () => {
                                         <Progress value={percent} className="h-1.5" />
                                     </CardContent>
                                     <div className="px-4 pb-4 mt-auto">
-                                        <Button asChild className="w-full" size="sm">
-                                            <Link to={`/lessons/${lesson._id}`}>Continue</Link>
+                                        <Button
+                                            className="w-full"
+                                            size="sm"
+                                            type="button"
+                                            onClick={() => handleContinueClick(lesson._id)}
+                                        >
+                                            Continue
                                         </Button>
                                     </div>
                                 </Card>

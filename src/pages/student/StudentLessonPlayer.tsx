@@ -1,3 +1,4 @@
+// src/pages/student/StudentLessonPlayer.tsx
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -9,7 +10,6 @@ import { sessionService } from '@/services/sessionService';
 import { ChevronLeft, ChevronRight, GraduationCap, MoreHorizontal } from 'lucide-react';
 import { progressService } from '@/services/progressService';
 import QuizPlayer from "@/components/student/QuizPlayer";
-
 
 type Lesson = {
     id: string;
@@ -229,10 +229,11 @@ export default function StudentLessonPlayer() {
         };
     }, [sendProgressPing]);
 
+    // ❗ FIXED: only one final ping, no forced completion
     useEffect(() => {
         return () => {
+            // Final ping; completion is decided by pos/dur >= 95% inside sendProgressPing
             sendProgressPing();
-            sendProgressPing(true); // mark complete if near end
         };
     }, [sendProgressPing]);
 
@@ -400,6 +401,8 @@ export default function StudentLessonPlayer() {
                             <EmotionTracker
                                 onEmotionDetected={onEmotionDetected}
                                 onTrackingChange={onTrackingChange}
+                                autoStart
+                                controlsLocked
                             />
                         </Card>
 
