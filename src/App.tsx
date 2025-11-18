@@ -35,6 +35,7 @@ import ParentNotifications from "./pages/parent/Notifications";
 // Student
 import StudentResources from "./pages/student/Resources";
 import StudentLessonPlayer from "./pages/student/StudentLessonPlayer";
+import StudentLessonQuiz from "./pages/student/StudentLessonQuiz";
 
 const queryClient = new QueryClient();
 
@@ -195,6 +196,15 @@ const App = () => (
                             element={
                                 <ProtectedRoute allowedRoles={["student"]}>
                                     <StudentLessonPlayer />
+                                </ProtectedRoute>
+                            }
+                        />
+                        {/* NEW: Student lesson quiz route */}
+                        <Route
+                            path="/student/lesson/:lessonId/quiz"
+                            element={
+                                <ProtectedRoute allowedRoles={["student"]}>
+                                    <StudentLessonQuiz />
                                 </ProtectedRoute>
                             }
                         />

@@ -9,7 +9,7 @@ import EmotionTracker from '@/components/EmotionTracker';
 import { sessionService } from '@/services/sessionService';
 import { ChevronLeft, ChevronRight, GraduationCap, MoreHorizontal } from 'lucide-react';
 import { progressService } from '@/services/progressService';
-import QuizPlayer from "@/components/student/QuizPlayer";
+import { quizService } from '@/services/quizService';
 
 type Lesson = {
     id: string;
@@ -23,7 +23,7 @@ type Lesson = {
 };
 
 const API_BASE = (import.meta as any).env.VITE_API_BASE_URL || 'http://localhost:5000/api';
-const join = (b: string, p: string) => `${b.replace(/\/+$/,'')}/${p.replace(/^\/+/, '')}`;
+const join = (b: string, p: string) => `${b.replace(/\/+$/, '')}/${p.replace(/^\/+/, '')}`;
 
 declare global {
     interface Window {
@@ -52,12 +52,22 @@ export default function StudentLessonPlayer() {
         enabled: !!id,
     });
 
+    // ── Check if any quiz exists for this lesson ───────────────────
+    const { data: quizzes } = useQuery({
+        queryKey: ['quizzes-by-lesson', data?.id],
+        queryFn: () => quizService.getByLesson(data!.id),
+        enabled: !!data?.id,
+    });
+
+    const hasQuiz = (quizzes?.length ?? 0) > 0;
+
     // ── YouTube Player ─────────────────────────────────────────────
     const containerRef = useRef<HTMLDivElement | null>(null);
     const playerRef = useRef<any>(null);
     const [duration, setDuration] = useState(0);
     const [current, setCurrent] = useState(0);
     const [isPlaying, setIsPlaying] = useState(false);
+    const [hasEnded, setHasEnded] = useState(false);
 
     useEffect(() => {
         if (window.YT?.Player) return;
@@ -71,7 +81,9 @@ export default function StudentLessonPlayer() {
 
         const create = () => {
             if (playerRef.current) {
-                try { playerRef.current.destroy(); } catch {}
+                try {
+                    playerRef.current.destroy();
+                } catch {}
                 playerRef.current = null;
             }
             playerRef.current = new window.YT.Player(containerRef.current, {
@@ -87,7 +99,11 @@ export default function StudentLessonPlayer() {
                     onStateChange: (e: any) => {
                         const YT = window.YT;
                         if (e.data === YT.PlayerState.PLAYING) setIsPlaying(true);
-                        if (e.data === YT.PlayerState.PAUSED || e.data === YT.PlayerState.ENDED) setIsPlaying(false);
+                        if (e.data === YT.PlayerState.PAUSED) setIsPlaying(false);
+                        if (e.data === YT.PlayerState.ENDED) {
+                            setIsPlaying(false);
+                            setHasEnded(true); // will trigger quiz redirect if quiz exists
+                        }
                     },
                 },
             });
@@ -100,7 +116,9 @@ export default function StudentLessonPlayer() {
         }
 
         return () => {
-            try { playerRef.current?.destroy?.(); } catch {}
+            try {
+                playerRef.current?.destroy?.();
+            } catch {}
             playerRef.current = null;
         };
     }, [data?.video_id]);
@@ -134,15 +152,17 @@ export default function StudentLessonPlayer() {
                 const s = await sessionService.start(data.id, {
                     ua: navigator.userAgent,
                     platform: navigator.platform,
-                    lang: navigator.language
+                    lang: navigator.language,
                 });
                 if (mounted) sessionIdRef.current = s._id;
             } catch (e) {
-                console.error("Failed to start session:", e);
+                console.error('Failed to start session:', e);
             }
         };
         start();
-        return () => { mounted = false; };
+        return () => {
+            mounted = false;
+        };
     }, [data?.id]);
 
     // Flush queue to backend
@@ -154,20 +174,24 @@ export default function StudentLessonPlayer() {
         } catch (e) {
             // If send fails, push back to queue for next attempt
             queueRef.current.unshift(...toSend);
-            console.error("Failed to send events:", e);
+            console.error('Failed to send events:', e);
         }
     }, []);
 
     // Periodic flush (every 5s)
     useEffect(() => {
         flushTimerRef.current = window.setInterval(() => flushEvents(), 5000);
-        const vis = () => { if (document.hidden) flushEvents(true); };
-        document.addEventListener("visibilitychange", vis);
-        window.addEventListener("beforeunload", () => { flushEvents(true); });
+        const vis = () => {
+            if (document.hidden) flushEvents(true);
+        };
+        document.addEventListener('visibilitychange', vis);
+        window.addEventListener('beforeunload', () => {
+            flushEvents(true);
+        });
 
         return () => {
             if (flushTimerRef.current) window.clearInterval(flushTimerRef.current);
-            document.removeEventListener("visibilitychange", vis);
+            document.removeEventListener('visibilitychange', vis);
         };
     }, [flushEvents]);
 
@@ -177,7 +201,11 @@ export default function StudentLessonPlayer() {
             (async () => {
                 await flushEvents(true);
                 if (sessionIdRef.current) {
-                    try { await sessionService.end(sessionIdRef.current); } catch (e) { /* ignore */ }
+                    try {
+                        await sessionService.end(sessionIdRef.current);
+                    } catch (e) {
+                        /* ignore */
+                    }
                 }
             })();
         };
@@ -198,44 +226,61 @@ export default function StudentLessonPlayer() {
         }
     }, [duration]);
 
-    const sendProgressPing = useCallback(async (forceComplete = false) => {
-        if (!data?.id) return;
-        const { pos, dur } = getPlayerTimes();
-        const isComplete = forceComplete || (dur ? (pos / dur) >= 0.95 : false);
-        try {
-            await progressService.ping(data.id, pos, dur, isComplete);
-        } catch (e) {
-            console.error("progress ping failed", e);
-        }
-    }, [data?.id, getPlayerTimes]);
+    const sendProgressPing = useCallback(
+        async (forceComplete = false) => {
+            if (!data?.id) return;
+            const { pos, dur } = getPlayerTimes();
+            const isComplete = forceComplete || (dur ? pos / dur >= 0.95 : false);
+            try {
+                await progressService.ping(data.id, pos, dur, isComplete);
+            } catch (e) {
+                console.error('progress ping failed', e);
+            }
+        },
+        [data?.id, getPlayerTimes]
+    );
 
     useEffect(() => {
         const kick = window.setTimeout(() => sendProgressPing(), 1500);
         pingTimerRef.current = window.setInterval(() => {
             const now = Date.now();
-            if (now - lastPingRef.current >= 10000) { // 10s
+            if (now - lastPingRef.current >= 10000) {
+                // 10s
                 lastPingRef.current = now;
                 sendProgressPing();
             }
         }, 1000);
 
-        const vis = () => { if (document.hidden) sendProgressPing(); };
-        document.addEventListener("visibilitychange", vis);
+        const vis = () => {
+            if (document.hidden) sendProgressPing();
+        };
+        document.addEventListener('visibilitychange', vis);
 
         return () => {
             window.clearTimeout(kick);
             if (pingTimerRef.current) window.clearInterval(pingTimerRef.current);
-            document.removeEventListener("visibilitychange", vis);
+            document.removeEventListener('visibilitychange', vis);
         };
     }, [sendProgressPing]);
 
-    // ❗ FIXED: only one final ping, no forced completion
+    // Final ping on unmount (no forced complete)
     useEffect(() => {
         return () => {
-            // Final ping; completion is decided by pos/dur >= 95% inside sendProgressPing
             sendProgressPing();
         };
     }, [sendProgressPing]);
+
+    // ── Auto-navigate to quiz when video ends (if quiz exists) ─────
+    useEffect(() => {
+        if (!hasEnded) return;
+        (async () => {
+            await sendProgressPing(true);
+            if (hasQuiz && data?.id) {
+                navigate(`/student/lesson/${data.id}/quiz`);
+            }
+            setHasEnded(false);
+        })();
+    }, [hasEnded, hasQuiz, data?.id, navigate, sendProgressPing]);
 
     // ── Emotion status UI state + simple low-attention cue ─────────
     const [emotionLabel, setEmotionLabel] = useState<string>('—');
@@ -246,7 +291,13 @@ export default function StudentLessonPlayer() {
     const getEmotionEmoji = (emotion: string) => {
         const e = (emotion || '').toLowerCase();
         const map: Record<string, string> = {
-            happy: '😊', surprise: '😮', neutral: '😐', fear: '😨', angry: '😠', sad: '😢', disgust: '🤢',
+            happy: '😊',
+            surprise: '😮',
+            neutral: '😐',
+            fear: '😨',
+            angry: '😠',
+            sad: '😢',
+            disgust: '🤢',
         };
         return map[e] ?? '😊';
     };
@@ -257,18 +308,18 @@ export default function StudentLessonPlayer() {
 
         // Queue emotion event
         queueRef.current.push({
-            type: "emotion",
+            type: 'emotion',
             emotion: { label: emotion || 'neutral' },
-            ts: new Date().toISOString()
+            ts: new Date().toISOString(),
         });
 
         // Queue attention event if provided (0..1)
-        if (typeof attentionScore === "number") {
+        if (typeof attentionScore === 'number') {
             const clamp = Math.max(0, Math.min(1, attentionScore));
             queueRef.current.push({
-                type: "attention",
+                type: 'attention',
                 attention: { score: clamp },
-                ts: new Date().toISOString()
+                ts: new Date().toISOString(),
             });
 
             // Low-attention streak: <0.4 for 15s
@@ -323,7 +374,7 @@ export default function StudentLessonPlayer() {
                 <div className="mb-4 rounded-2xl bg-[#E7F0F0] px-4 py-3 flex items-center justify-between">
                     <button
                         className="inline-flex items-center gap-2 text-gray-700 hover:underline"
-                        onClick={() => navigate('/student')}
+                        onClick={() => navigate('/')}
                     >
                         <GraduationCap className="h-5 w-5" />
                         Back to Lessons
@@ -362,18 +413,25 @@ export default function StudentLessonPlayer() {
 
                         {/* Navigation */}
                         <div className="mt-6 flex flex-col sm:flex-row gap-3">
-                            <Button variant="outline" className="flex-1" onClick={() => navigate('/student')}>
+                            <Button variant="outline" className="flex-1" onClick={() => navigate('/')}>
                                 <ChevronLeft className="h-4 w-4 mr-2" />
                                 Back to Lessons
                             </Button>
-                            <Button className="flex-1" onClick={() => navigate('/student')}>
-                                Next Lesson
-                                <ChevronRight className="h-4 w-4 ml-2" />
-                            </Button>
+                            {hasQuiz ? (
+                                <Button className="flex-1" onClick={() => navigate(`/student/lesson/${data.id}/quiz`)}>
+                                    Go to Quiz
+                                    <ChevronRight className="h-4 w-4 ml-2" />
+                                </Button>
+                            ) : (
+                                <Button className="flex-1" onClick={() => navigate('/student')}>
+                                    Next Lesson
+                                    <ChevronRight className="h-4 w-4 ml-2" />
+                                </Button>
+                            )}
                         </div>
                     </div>
 
-                    {/* RIGHT: emotion tracker (wider, 420px) */}
+                    {/* RIGHT: emotion tracker and quiz CTA */}
                     <div className="bg-[#B9DBFF] rounded-3xl p-4 md:p-6">
                         <h2 className="text-lg md:text-xl font-bold text-gray-800 mb-4">How you’re doing!</h2>
 
@@ -389,9 +447,7 @@ export default function StudentLessonPlayer() {
                             <div className="flex items-center gap-3 mb-2">
                                 <span className="text-3xl">{getEmotionEmoji(emotionLabel || 'neutral')}</span>
                                 <div>
-                                    <div className="text-sm text-gray-700">
-                                        You seem {emotionLabel || 'neutral'}!
-                                    </div>
+                                    <div className="text-sm text-gray-700">You seem {emotionLabel || 'neutral'}!</div>
                                     <div className="text-xs text-gray-600">Live from camera</div>
                                 </div>
                             </div>
@@ -406,11 +462,18 @@ export default function StudentLessonPlayer() {
                             />
                         </Card>
 
-                        <Card className="mt-6 p-3">
-                            <h3 className="text-lg font-semibold mb-2">Lesson Quiz</h3>
-                            <QuizPlayer lessonId={data.id} />
-                        </Card>
-
+                        {/* Quiz CTA instead of inline quiz player */}
+                        {hasQuiz && (
+                            <Card className="mt-6 p-3">
+                                <h3 className="text-lg font-semibold mb-2">Ready for a quick quiz?</h3>
+                                <p className="text-sm text-gray-700 mb-3">
+                                    When you finish this lesson, you can test what you learned with a short quiz.
+                                </p>
+                                <Button className="w-full" onClick={() => navigate(`/student/lesson/${data.id}/quiz`)}>
+                                    Go to Quiz
+                                </Button>
+                            </Card>
+                        )}
                     </div>
                 </div>
             </div>
