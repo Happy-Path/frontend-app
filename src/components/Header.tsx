@@ -1,7 +1,7 @@
 // src/components/Header.tsx
-import React from 'react';
+import React from "react";
 import { User } from "@/types";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Home, LogIn, LogOut, Settings, MessageSquare } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
@@ -14,12 +14,47 @@ interface HeaderProps {
     user?: User;
 }
 
+/* -------------------------------------------------------
+   MS Teams style initials generator
+------------------------------------------------------- */
+function getInitials(name?: string | null): string {
+    if (!name) return "?";
+    const trimmed = name.trim();
+    if (!trimmed) return "?";
+
+    const parts = trimmed.split(/\s+/);
+
+    if (parts.length === 1) {
+        // Single name → first 2 letters
+        return parts[0].substring(0, 2).toUpperCase();
+    }
+
+    // First letter of first two words
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+}
+
+/* -------------------------------------------------------
+   Messages Badge (Teacher + Parent Only)
+------------------------------------------------------- */
 export function MessagesBadge() {
+    const { user } = useAuth();
+
+    const role = user?.role;
+    const isTeacherOrParent = role === "teacher" || role === "parent";
+    const hasToken = !!localStorage.getItem("token");
+
+    // only fetch for teacher/parent
+    const shouldFetch = isTeacherOrParent && hasToken;
+
     const { data } = useQuery({
         queryKey: ["unread"],
         queryFn: messageService.unreadCount,
-        refetchInterval: 1000,
+        enabled: shouldFetch,
+        refetchInterval: shouldFetch ? 2000 : false,
     });
+
+    if (!isTeacherOrParent) return null;
+
     const count = data?.count ?? 0;
 
     return (
@@ -44,6 +79,9 @@ export function MessagesBadge() {
     );
 }
 
+/* -------------------------------------------------------
+   Header Component
+------------------------------------------------------- */
 const Header = ({ user: propUser }: HeaderProps) => {
     const { user: authUser, logout } = useAuth();
     const user = propUser || authUser;
@@ -54,9 +92,11 @@ const Header = ({ user: propUser }: HeaderProps) => {
         try {
             await logout();
             qc.clear();
+
             toast("Logged out", {
                 description: "You have been successfully logged out.",
             });
+
             navigate("/login", { replace: true });
         } catch (error: any) {
             toast("Logout failed", {
@@ -74,20 +114,21 @@ const Header = ({ user: propUser }: HeaderProps) => {
         </span>
             </Link>
 
-            {/* Right section */}
+            {/* Right Side */}
             <div className="flex items-center gap-4">
+                {/* Home */}
                 <Button
                     variant="ghost"
                     size="icon"
                     asChild
                     className="rounded-full hover:bg-happy-100"
                 >
-                    {/* 👇 Home now goes to /dashboard so it routes by role */}
                     <Link to="/dashboard" title="Home">
                         <Home className="h-5 w-5 text-happy-600" />
                     </Link>
                 </Button>
 
+                {/* Settings */}
                 <Button
                     variant="ghost"
                     size="icon"
@@ -99,19 +140,23 @@ const Header = ({ user: propUser }: HeaderProps) => {
                     </Link>
                 </Button>
 
-                {/* Messages Icon + Unread Badge */}
+                {/* Messages */}
                 <MessagesBadge />
 
+                {/* Profile + Logout */}
                 {user ? (
                     <div className="flex items-center gap-3">
+                        {/* Profile */}
                         <Link to="/profile" title="Profile">
                             <Avatar className="cursor-pointer border-2 border-happy-200 hover:border-happy-400 transition-all">
-                                <AvatarImage src={user.avatar} alt={user.name} />
+                                {/* ✅ Only initials – no AvatarImage, nothing to override */}
                                 <AvatarFallback className="bg-sunny-200 text-sunny-700">
-                                    {user.name.substring(0, 2).toUpperCase()}
+                                    {getInitials(user.name)}
                                 </AvatarFallback>
                             </Avatar>
                         </Link>
+
+                        {/* Logout */}
                         <Button
                             variant="ghost"
                             size="icon"
@@ -123,6 +168,7 @@ const Header = ({ user: propUser }: HeaderProps) => {
                         </Button>
                     </div>
                 ) : (
+                    /* Login */
                     <Button
                         variant="ghost"
                         size="icon"

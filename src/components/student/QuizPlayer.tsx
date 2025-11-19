@@ -1,12 +1,11 @@
 // src/components/student/QuizPlayer.tsx
-import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { quizService, QuizDTO } from "@/services/quizService";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { useNavigate } from "react-router-dom";
-import EmotionTracker from "@/components/EmotionTracker";
 
 type Props = {
     lessonId: string;
@@ -53,58 +52,6 @@ export default function QuizPlayer({ lessonId, onDone }: Props) {
 
     // Track per-question start time for timeTakenSec
     const qTimeRef = useRef<number>(Date.now());
-
-    // ── Emotion Tracker UI state (same pattern as LessonPlayer) ─────
-    const [emotionLabel, setEmotionLabel] = useState<string>("—");
-    const [trackingActive, setTrackingActive] = useState(false);
-    const [lowAttention, setLowAttention] = useState(false);
-    const lowStartRef = useRef<number | null>(null);
-
-    const getEmotionEmoji = (emotion: string) => {
-        const e = (emotion || "").toLowerCase();
-        const map: Record<string, string> = {
-            happy: "😊",
-            surprise: "😮",
-            neutral: "😐",
-            fear: "😨",
-            angry: "😠",
-            sad: "😢",
-            disgust: "🤢",
-        };
-        return map[e] ?? "😊";
-    };
-
-    const onEmotionDetected = useCallback(
-        (emotion: string, _confidence?: number, attentionScore?: number) => {
-            setEmotionLabel(emotion || "neutral");
-
-            if (typeof attentionScore === "number") {
-                const clamp = Math.max(0, Math.min(1, attentionScore));
-                const now = Date.now();
-
-                if (clamp < 0.4) {
-                    if (lowStartRef.current == null) lowStartRef.current = now;
-                    const elapsed = (now - lowStartRef.current) / 1000;
-                    setLowAttention(elapsed >= 15);
-                } else {
-                    lowStartRef.current = null;
-                    setLowAttention(false);
-                }
-            }
-        },
-        []
-    );
-
-    const onTrackingChange = useCallback((running: boolean) => {
-        setTrackingActive(running);
-        if (running) {
-            setEmotionLabel("neutral");
-        } else {
-            setEmotionLabel("");
-            lowStartRef.current = null;
-            setLowAttention(false);
-        }
-    }, []);
 
     // Reset when lesson or quiz list changes
     useEffect(() => {
@@ -289,8 +236,8 @@ export default function QuizPlayer({ lessonId, onDone }: Props) {
                                     key={o.id}
                                     onClick={() => select(o.id)}
                                     className={`rounded-2xl border-2 p-4 min-h-[96px] flex flex-col items-center justify-center gap-2 focus:outline-none
-                    border-gray-300 bg-white hover:bg-gray-50
-                  `}
+                                        border-gray-300 bg-white hover:bg-gray-50
+                                    `}
                                 >
                                     {o.imageUrl && (
                                         <img
@@ -301,46 +248,12 @@ export default function QuizPlayer({ lessonId, onDone }: Props) {
                                     )}
                                     {o.labelText && (
                                         <span className="text-lg font-semibold">
-                      {o.labelText}
-                    </span>
+                                            {o.labelText}
+                                        </span>
                                     )}
                                 </button>
                             ))}
                         </div>
-                    </div>
-                </Card>
-
-                {/* EMOTION TRACKER CARD (same feel as LessonPlayer) */}
-                <Card className="p-4 bg-white rounded-2xl">
-                    <h2 className="text-lg md:text-xl font-bold text-gray-800 mb-3">
-                        How you’re doing!
-                    </h2>
-
-                    {lowAttention && (
-                        <div className="mb-3 text-sm bg-yellow-100 border border-yellow-300 text-yellow-800 rounded-md px-3 py-2">
-                            Noticing low attention. Let’s take a tiny break or try a different activity. ✨
-                        </div>
-                    )}
-
-                    {trackingActive && (
-                        <div className="flex items-center gap-3 mb-2">
-                            <span className="text-3xl">{getEmotionEmoji(emotionLabel || "neutral")}</span>
-                            <div>
-                                <div className="text-sm text-gray-700">
-                                    You seem {emotionLabel || "neutral"}!
-                                </div>
-                                <div className="text-xs text-gray-600">Live from camera</div>
-                            </div>
-                        </div>
-                    )}
-
-                    <div className="mt-3">
-                        <EmotionTracker
-                            onEmotionDetected={onEmotionDetected}
-                            onTrackingChange={onTrackingChange}
-                            autoStart
-                            controlsLocked
-                        />
                     </div>
                 </Card>
             </div>
@@ -351,7 +264,7 @@ export default function QuizPlayer({ lessonId, onDone }: Props) {
                     <Card className="p-6 w-72 text-center">
                         <div
                             className={`text-xl font-bold ${
-                                feedback.correct ? "text-green-600" : "text-red-600"
+                                feedback.correct ? "text-green-600" : "text-red-600"
                             }`}
                         >
                             {feedback.correct ? "Correct! 🎉" : "Not quite right"}
