@@ -1,4 +1,4 @@
-
+// src/pages/teacher/Notifications.tsx
 import TeacherNotifications from '@/components/teacher/TeacherNotifications';
 import Header from '@/components/Header';
 import { useAuth } from '@/contexts/AuthContext';

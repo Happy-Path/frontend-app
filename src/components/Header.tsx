@@ -3,12 +3,17 @@ import React from "react";
 import { User } from "@/types";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Home, LogIn, LogOut, Settings, MessageSquare } from "lucide-react";
+import { Home, LogIn, LogOut, MessageSquare } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { messageService } from "@/services/messageService";
 import { toast } from "sonner";
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from "@/components/ui/popover";
 
 interface HeaderProps {
     user?: User;
@@ -80,6 +85,26 @@ export function MessagesBadge() {
 }
 
 /* -------------------------------------------------------
+   Role badge label / color
+------------------------------------------------------- */
+function RoleBadge({ role }: { role: User["role"] }) {
+    const label =
+        role === "teacher"
+            ? "Teacher"
+            : role === "parent"
+                ? "Parent"
+                : role === "admin"
+                    ? "Admin"
+                    : "Student";
+
+    return (
+        <span className="inline-flex items-center rounded-full bg-happy-100 px-2 py-0.5 text-[11px] font-medium text-happy-800 uppercase tracking-wide">
+      {label}
+    </span>
+    );
+}
+
+/* -------------------------------------------------------
    Header Component
 ------------------------------------------------------- */
 const Header = ({ user: propUser }: HeaderProps) => {
@@ -105,6 +130,10 @@ const Header = ({ user: propUser }: HeaderProps) => {
         }
     };
 
+    const handleViewProfile = () => {
+        navigate("/profile");
+    };
+
     return (
         <header className="bg-white shadow-md py-4 px-6 flex justify-between items-center rounded-b-xl">
             {/* Logo */}
@@ -128,17 +157,19 @@ const Header = ({ user: propUser }: HeaderProps) => {
                     </Link>
                 </Button>
 
-                {/* Settings */}
-                <Button
-                    variant="ghost"
-                    size="icon"
-                    asChild
-                    className="rounded-full hover:bg-happy-100"
-                >
-                    <Link to="/settings" title="Settings">
-                        <Settings className="h-5 w-5 text-happy-600" />
-                    </Link>
-                </Button>
+                {/* Settings – currently hidden/commented as requested */}
+                {/*
+        <Button
+          variant="ghost"
+          size="icon"
+          asChild
+          className="rounded-full hover:bg-happy-100"
+        >
+          <Link to="/settings" title="Settings">
+            <Settings className="h-5 w-5 text-happy-600" />
+          </Link>
+        </Button>
+        */}
 
                 {/* Messages */}
                 <MessagesBadge />
@@ -146,26 +177,78 @@ const Header = ({ user: propUser }: HeaderProps) => {
                 {/* Profile + Logout */}
                 {user ? (
                     <div className="flex items-center gap-3">
-                        {/* Profile */}
-                        <Link to="/profile" title="Profile">
-                            <Avatar className="cursor-pointer border-2 border-happy-200 hover:border-happy-400 transition-all">
-                                {/* ✅ Only initials – no AvatarImage, nothing to override */}
-                                <AvatarFallback className="bg-sunny-200 text-sunny-700">
-                                    {getInitials(user.name)}
-                                </AvatarFallback>
-                            </Avatar>
-                        </Link>
+                        {/* Profile popover */}
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <button
+                                    type="button"
+                                    title="Profile"
+                                    className="rounded-full focus:outline-none focus:ring-2 focus:ring-happy-400"
+                                >
+                                    <Avatar className="cursor-pointer border-2 border-happy-200 hover:border-happy-400 transition-all">
+                                        <AvatarFallback className="bg-sunny-200 text-sunny-700">
+                                            {getInitials(user.name)}
+                                        </AvatarFallback>
+                                    </Avatar>
+                                </button>
+                            </PopoverTrigger>
+                            <PopoverContent
+                                align="end"
+                                className="w-64 p-4 border border-happy-100 shadow-lg rounded-xl"
+                            >
+                                <div className="flex items-center gap-3 mb-3">
+                                    <Avatar className="h-10 w-10">
+                                        <AvatarFallback className="bg-sunny-200 text-sunny-700">
+                                            {getInitials(user.name)}
+                                        </AvatarFallback>
+                                    </Avatar>
+                                    <div className="min-w-0">
+                                        <p className="font-semibold truncate">{user.name}</p>
+                                        <p className="text-xs text-muted-foreground truncate">
+                                            {user.email}
+                                        </p>
+                                    </div>
+                                </div>
 
-                        {/* Logout */}
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={handleLogout}
-                            className="rounded-full hover:bg-happy-100"
-                            title="Logout"
-                        >
-                            <LogOut className="h-5 w-5 text-happy-600" />
-                        </Button>
+                                <div className="mb-3">
+                                    <RoleBadge role={user.role} />
+                                </div>
+
+                                <div className="flex gap-2">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="flex-1"
+                                        onClick={handleViewProfile}
+                                    >
+                                        View profile
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={handleLogout}
+                                        className="flex items-center gap-1"
+                                    >
+                                        <LogOut className="h-4 w-4" />
+                                        <span className="text-xs">Logout</span>
+                                    </Button>
+                                </div>
+                            </PopoverContent>
+                        </Popover>
+
+                        {/* Separate logout icon can be removed if you prefer only in popover
+                Keeping it here for now, but you can safely delete this block. */}
+                        {/*
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleLogout}
+              className="rounded-full hover:bg-happy-100"
+              title="Logout"
+            >
+              <LogOut className="h-5 w-5 text-happy-600" />
+            </Button>
+            */}
                     </div>
                 ) : (
                     /* Login */

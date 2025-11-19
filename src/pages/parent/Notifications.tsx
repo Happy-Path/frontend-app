@@ -1,4 +1,4 @@
-
+// src/pages/parent/Notifications.tsx
 import ParentNotifications from '@/components/parent/ParentNotifications';
 import Header from '@/components/Header';
 import { useAuth } from '@/contexts/AuthContext';
