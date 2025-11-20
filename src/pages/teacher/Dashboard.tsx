@@ -15,6 +15,7 @@ import {
     notificationService,
     NotificationDto,
 } from "@/services/notificationService";
+import TeacherMicroBreakManager from "@/components/teacher/TeacherMicroBreakManager";
 
 const TeacherDashboard = () => {
     const { user } = useAuth();
@@ -56,10 +57,12 @@ const TeacherDashboard = () => {
                     onValueChange={setActiveTab}
                     className="space-y-6"
                 >
-                    <TabsList className="grid w-full grid-cols-6 rounded-lg bg-happy-50">
-                        <TabsTrigger value="modules">Learning Modules</TabsTrigger>
+                    <TabsList className="grid w-full grid-cols-7 rounded-lg bg-happy-50">
                         <TabsTrigger value="students">Students</TabsTrigger>
+                        <TabsTrigger value="modules">Learning Modules</TabsTrigger>
+                        <TabsTrigger value="quizzes">Quizzes</TabsTrigger>
                         <TabsTrigger value="analytics">Analytics</TabsTrigger>
+                        <TabsTrigger value="reports">Reports</TabsTrigger>
                         <TabsTrigger
                             value="notifications"
                             className="flex items-center gap-2"
@@ -74,9 +77,9 @@ const TeacherDashboard = () => {
                                 </Badge>
                             )}
                         </TabsTrigger>
-                        <TabsTrigger value="reports">Reports</TabsTrigger>
-                        <TabsTrigger value="quizzes">Quizzes</TabsTrigger>
+                        <TabsTrigger value="micro-breaks">Micro-Breaks</TabsTrigger>
                     </TabsList>
+
 
                     <TabsContent value="modules" className="space-y-6">
                         <TeacherModules />
@@ -84,6 +87,10 @@ const TeacherDashboard = () => {
 
                     <TabsContent value="students" className="space-y-6">
                         <TeacherStudents />
+                    </TabsContent>
+
+                    <TabsContent value="micro-breaks" className="space-y-6">
+                        <TeacherMicroBreakManager />
                     </TabsContent>
 
                     <TabsContent value="analytics" className="space-y-6">
@@ -101,6 +108,7 @@ const TeacherDashboard = () => {
                     <TabsContent value="quizzes" className="space-y-6">
                         <TeacherQuizzes />
                     </TabsContent>
+
                 </Tabs>
             </main>
         </div>

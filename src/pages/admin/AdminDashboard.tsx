@@ -46,9 +46,9 @@ export default function AdminDashboard() {
               <TabsTrigger value="assignments">
                 Parent–Student Assignments
               </TabsTrigger>
+                <TabsTrigger value="system">System Notifications</TabsTrigger>
               <TabsTrigger value="analytics">Analytics</TabsTrigger>
               <TabsTrigger value="reports">Reports</TabsTrigger>
-              <TabsTrigger value="system">System</TabsTrigger>
             </TabsList>
 
             <TabsContent value="users" className="space-y-6">

@@ -170,6 +170,12 @@ const EmotionTracker = ({
             } else {
                 setFaceDetected(false);
                 setError(data.message || "Failed to detect emotion");
+                // 👉 Treat "no face" as a low-attention sample
+                // so the lesson can react (micro-break / alert).
+                if (data.faces_count === 0) {
+                    // neutral emotion, 0 confidence, 0% attention
+                    onEmotionDetected?.("neutral", 0, 0);
+                }
             }
         } catch (err) {
             console.error("Error sending frame:", err);

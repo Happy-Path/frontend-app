@@ -58,6 +58,7 @@ const ParentDashboard = () => {
                         <TabsTrigger value="overview">Overview</TabsTrigger>
                         <TabsTrigger value="progress">Progress</TabsTrigger>
                         <TabsTrigger value="resources">Learning Resources</TabsTrigger>
+                        <TabsTrigger value="reports">Reports</TabsTrigger>
                         <TabsTrigger
                             value="notifications"
                             className="flex items-center gap-2"
@@ -72,7 +73,6 @@ const ParentDashboard = () => {
                                 </Badge>
                             )}
                         </TabsTrigger>
-                        <TabsTrigger value="reports">Reports</TabsTrigger>
                     </TabsList>
 
                     <TabsContent value="overview" className="space-y-6">

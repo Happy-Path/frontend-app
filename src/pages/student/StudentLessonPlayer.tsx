@@ -1,15 +1,21 @@
-// src/pages/student/StudentLessonPlayer.tsx
-import { useEffect, useRef, useState, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import Header from '@/components/Header';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import EmotionTracker from '@/components/EmotionTracker';
-import { sessionService } from '@/services/sessionService';
-import { ChevronLeft, ChevronRight, GraduationCap, MoreHorizontal } from 'lucide-react';
-import { progressService } from '@/services/progressService';
-import { quizService } from '@/services/quizService';
+import { useEffect, useRef, useState, useCallback } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import Header from "@/components/Header";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import EmotionTracker from "@/components/EmotionTracker";
+import { sessionService } from "@/services/sessionService";
+import { ChevronLeft, ChevronRight, GraduationCap, MoreHorizontal } from "lucide-react";
+import { progressService } from "@/services/progressService";
+import { quizService } from "@/services/quizService";
+import {
+    microBreakService,
+    MicroBreakItem,
+} from "@/services/microBreakService";
+import MicroBreakOverlay, {
+    MicroBreakContentLite,
+} from "@/components/student/MicroBreakOverlay";
 
 type Lesson = {
     id: string;
@@ -19,11 +25,13 @@ type Lesson = {
     category: string;
     level: string;
     video_id: string;
-    status: 'draft' | 'published';
+    status: "draft" | "published";
 };
 
-const API_BASE = (import.meta as any).env.VITE_API_BASE_URL || 'http://localhost:5000/api';
-const join = (b: string, p: string) => `${b.replace(/\/+$/, '')}/${p.replace(/^\/+/, '')}`;
+const API_BASE =
+    (import.meta as any).env.VITE_API_BASE_URL || "http://localhost:5000/api";
+const join = (b: string, p: string) =>
+    `${b.replace(/\/+$/, "")}/${p.replace(/^\/+/, "")}`;
 
 declare global {
     interface Window {
@@ -32,19 +40,21 @@ declare global {
     }
 }
 
+const NEGATIVE_EMOTIONS = ["sad", "angry", "fear", "disgust"];
+
 export default function StudentLessonPlayer() {
     const { id } = useParams();
     const navigate = useNavigate();
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem("token");
 
     // ── Fetch lesson ───────────────────────────────────────────────
     const { data, isLoading, error } = useQuery({
-        queryKey: ['lesson-by-id', id],
+        queryKey: ["lesson-by-id", id],
         queryFn: async (): Promise<Lesson> => {
             const res = await fetch(join(API_BASE, `/lessons/${id}`), {
                 headers: token ? { Authorization: `Bearer ${token}` } : {},
             });
-            if (!res.ok) throw new Error('Failed to load lesson');
+            if (!res.ok) throw new Error("Failed to load lesson");
             const json = await res.json();
             const l = json.lesson;
             return { id: l._id, ...l };
@@ -54,12 +64,18 @@ export default function StudentLessonPlayer() {
 
     // ── Check if any quiz exists for this lesson ───────────────────
     const { data: quizzes } = useQuery({
-        queryKey: ['quizzes-by-lesson', data?.id],
+        queryKey: ["quizzes-by-lesson", data?.id],
         queryFn: () => quizService.getByLesson(data!.id),
         enabled: !!data?.id,
     });
 
     const hasQuiz = (quizzes?.length ?? 0) > 0;
+
+    // ── Load micro-break content (public library) ───────────────────
+    const { data: microBreakItems = [] } = useQuery<MicroBreakItem[]>({
+        queryKey: ["micro-breaks", "public"],
+        queryFn: microBreakService.getPublic,
+    });
 
     // ── YouTube Player ─────────────────────────────────────────────
     const containerRef = useRef<HTMLDivElement | null>(null);
@@ -71,8 +87,8 @@ export default function StudentLessonPlayer() {
 
     useEffect(() => {
         if (window.YT?.Player) return;
-        const s = document.createElement('script');
-        s.src = 'https://www.youtube.com/iframe_api';
+        const s = document.createElement("script");
+        s.src = "https://www.youtube.com/iframe_api";
         document.body.appendChild(s);
     }, []);
 
@@ -87,9 +103,14 @@ export default function StudentLessonPlayer() {
                 playerRef.current = null;
             }
             playerRef.current = new window.YT.Player(containerRef.current, {
-                width: '100%',
+                width: "100%",
                 videoId: data.video_id,
-                playerVars: { modestbranding: 1, rel: 0, playsinline: 1, autoplay: 1 },
+                playerVars: {
+                    modestbranding: 1,
+                    rel: 0,
+                    playsinline: 1,
+                    autoplay: 1,
+                },
                 events: {
                     onReady: (e: any) => {
                         const d = Math.floor(e.target.getDuration?.() || 0);
@@ -136,7 +157,9 @@ export default function StudentLessonPlayer() {
         return () => clearInterval(t);
     }, [duration]);
 
-    const percent = duration ? Math.min(100, Math.round((current / duration) * 100)) : 0;
+    const percent = duration
+        ? Math.min(100, Math.round((current / duration) * 100))
+        : 0;
 
     // ── Session + Telemetry (emotion & attention) ──────────────────
     const sessionIdRef = useRef<string | null>(null);
@@ -156,7 +179,7 @@ export default function StudentLessonPlayer() {
                 });
                 if (mounted) sessionIdRef.current = s._id;
             } catch (e) {
-                console.error('Failed to start session:', e);
+                console.error("Failed to start session:", e);
             }
         };
         start();
@@ -174,7 +197,7 @@ export default function StudentLessonPlayer() {
         } catch (e) {
             // If send fails, push back to queue for next attempt
             queueRef.current.unshift(...toSend);
-            console.error('Failed to send events:', e);
+            console.error("Failed to send events:", e);
         }
     }, []);
 
@@ -184,14 +207,14 @@ export default function StudentLessonPlayer() {
         const vis = () => {
             if (document.hidden) flushEvents(true);
         };
-        document.addEventListener('visibilitychange', vis);
-        window.addEventListener('beforeunload', () => {
+        document.addEventListener("visibilitychange", vis);
+        window.addEventListener("beforeunload", () => {
             flushEvents(true);
         });
 
         return () => {
             if (flushTimerRef.current) window.clearInterval(flushTimerRef.current);
-            document.removeEventListener('visibilitychange', vis);
+            document.removeEventListener("visibilitychange", vis);
         };
     }, [flushEvents]);
 
@@ -219,7 +242,9 @@ export default function StudentLessonPlayer() {
         if (!playerRef.current) return { pos: 0, dur: duration || 0 };
         try {
             const pos = Math.floor(playerRef.current.getCurrentTime?.() || 0);
-            const dur = Math.floor(playerRef.current.getDuration?.() || duration || 0);
+            const dur = Math.floor(
+                playerRef.current.getDuration?.() || duration || 0
+            );
             return { pos, dur };
         } catch {
             return { pos: 0, dur: duration || 0 };
@@ -234,7 +259,7 @@ export default function StudentLessonPlayer() {
             try {
                 await progressService.ping(data.id, pos, dur, isComplete);
             } catch (e) {
-                console.error('progress ping failed', e);
+                console.error("progress ping failed", e);
             }
         },
         [data?.id, getPlayerTimes]
@@ -254,12 +279,12 @@ export default function StudentLessonPlayer() {
         const vis = () => {
             if (document.hidden) sendProgressPing();
         };
-        document.addEventListener('visibilitychange', vis);
+        document.addEventListener("visibilitychange", vis);
 
         return () => {
             window.clearTimeout(kick);
             if (pingTimerRef.current) window.clearInterval(pingTimerRef.current);
-            document.removeEventListener('visibilitychange', vis);
+            document.removeEventListener("visibilitychange", vis);
         };
     }, [sendProgressPing]);
 
@@ -282,67 +307,177 @@ export default function StudentLessonPlayer() {
         })();
     }, [hasEnded, hasQuiz, data?.id, navigate, sendProgressPing]);
 
-    // ── Emotion status UI state + simple low-attention cue ─────────
-    const [emotionLabel, setEmotionLabel] = useState<string>('—');
+    // ── Emotion status UI state ─────────────────────────────────────
+    const [emotionLabel, setEmotionLabel] = useState<string>("—");
     const [trackingActive, setTrackingActive] = useState(false);
     const [lowAttention, setLowAttention] = useState(false);
-    const lowStartRef = useRef<number | null>(null);
+    const badStreakRef = useRef(0);
 
     const getEmotionEmoji = (emotion: string) => {
-        const e = (emotion || '').toLowerCase();
+        const e = (emotion || "").toLowerCase();
         const map: Record<string, string> = {
-            happy: '😊',
-            surprise: '😮',
-            neutral: '😐',
-            fear: '😨',
-            angry: '😠',
-            sad: '😢',
-            disgust: '🤢',
+            happy: "😊",
+            surprise: "😮",
+            neutral: "😐",
+            fear: "😨",
+            angry: "😠",
+            sad: "😢",
+            disgust: "🤢",
         };
-        return map[e] ?? '😊';
+        return map[e] ?? "😊";
     };
 
-    // Receive samples from EmotionTracker
-    const onEmotionDetected = useCallback((emotion: string, _confidence?: number, attentionScore?: number) => {
-        setEmotionLabel(emotion || 'neutral');
+    // ── Micro-break state ───────────────────────────────────────────
+    const [microBreakOpen, setMicroBreakOpen] = useState(false);
+    const [microBreakContent, setMicroBreakContent] =
+        useState<MicroBreakContentLite | null>(null);
+    const microBreakCountRef = useRef(0);
+    const microBreakStartRef = useRef<number | null>(null);
+    const alertFlagsRef = useRef<{ multiple: boolean; long: boolean }>({
+        multiple: false,
+        long: false,
+    });
+    const lastStudentBreakAlertRef = useRef<number | null>(null);
+    const microBreakActiveRef = useRef(false); // hard lock to avoid re-triggering
 
-        // Queue emotion event
-        queueRef.current.push({
-            type: 'emotion',
-            emotion: { label: emotion || 'neutral' },
-            ts: new Date().toISOString(),
-        });
 
-        // Queue attention event if provided (0..1)
-        if (typeof attentionScore === 'number') {
-            const clamp = Math.max(0, Math.min(1, attentionScore));
+    const triggerMicroBreak = useCallback(() => {
+        // 🔒 hard guard: if a micro-break is already active, never start another
+        if (microBreakActiveRef.current) return;
+        microBreakActiveRef.current = true;
+
+        let chosenContent: MicroBreakContentLite;
+        if (microBreakItems.length) {
+            const chosen =
+                microBreakItems[
+                    Math.floor(Math.random() * Math.max(microBreakItems.length, 1))
+                    ];
+            chosenContent = {
+                id: chosen.id,
+                title: chosen.title,
+                youtubeUrl: chosen.youtubeUrl,
+                boosterText: chosen.boosterText,
+            };
+        } else {
+            chosenContent = {
+                id: "default",
+                title: "Let’s take a tiny break",
+                youtubeUrl: "",
+                boosterText:
+                    "You’re doing really well. Let’s breathe and then try the next part together.",
+            };
+        }
+
+        setMicroBreakContent(chosenContent);
+        setMicroBreakOpen(true);
+        microBreakCountRef.current += 1;
+        microBreakStartRef.current = Date.now();
+
+        // Pause lesson video
+        try {
+            playerRef.current?.pauseVideo?.();
+        } catch {}
+
+        if (
+            sessionIdRef.current &&
+            microBreakCountRef.current >= 3 &&
+            !alertFlagsRef.current.multiple
+        ) {
+            alertFlagsRef.current.multiple = true;
+            sessionService
+                .raiseAttentionAlert(sessionIdRef.current, "multiple_episodes")
+                .catch((err: any) =>
+                    console.error("lesson alert multiple_episodes failed", err)
+                );
+        }
+    }, [microBreakItems /* remove microBreakOpen from deps */]);
+
+    const closeMicroBreak = useCallback(() => {
+        setMicroBreakOpen(false);
+        setMicroBreakContent(null);
+        microBreakStartRef.current = null;
+        microBreakActiveRef.current = false; // 🔓 unlock so a future episode can open again
+
+        // Resume lesson video
+        try {
+            playerRef.current?.playVideo?.();
+        } catch {}
+    }, []);
+
+
+    // Long-episode alert while overlay is open
+    useEffect(() => {
+        if (!microBreakOpen) return;
+        const timer = window.setInterval(() => {
+            if (
+                !sessionIdRef.current ||
+                !microBreakStartRef.current ||
+                alertFlagsRef.current.long
+            )
+                return;
+            const elapsed = (Date.now() - microBreakStartRef.current) / 1000;
+            if (elapsed >= 60) {
+                alertFlagsRef.current.long = true;
+                sessionService
+                    .raiseAttentionAlert(sessionIdRef.current, "long_episode")
+                    .catch((err: any) =>
+                        console.error("lesson alert long_episode failed", err)
+                    );
+            }
+        }, 5000);
+        return () => window.clearInterval(timer);
+    }, [microBreakOpen]);
+
+    // ── Emotion callbacks from tracker ──────────────────────────────
+    const onEmotionDetected = useCallback(
+        (emotion: string, _confidence?: number, attentionScore?: number) => {
+            const label = emotion || "neutral";
+            setEmotionLabel(label);
+
+            // Queue emotion event
             queueRef.current.push({
-                type: 'attention',
-                attention: { score: clamp },
+                type: "emotion",
+                emotion: { label },
                 ts: new Date().toISOString(),
             });
 
-            // Low-attention streak: <0.4 for 15s
-            const now = Date.now();
-            if (clamp < 0.4) {
-                if (lowStartRef.current == null) lowStartRef.current = now;
-                const elapsed = (now - lowStartRef.current) / 1000;
-                setLowAttention(elapsed >= 15);
-            } else {
-                lowStartRef.current = null;
-                setLowAttention(false);
-            }
-        }
-    }, []);
+            if (typeof attentionScore === "number") {
+                const clamp = Math.max(0, Math.min(1, attentionScore));
+                queueRef.current.push({
+                    type: "attention",
+                    attention: { score: clamp },
+                    ts: new Date().toISOString(),
+                });
 
-    // Track when the child starts/stops tracking (to show/hide status line)
+                const isLowAttention = clamp <= 0.5; // <= 50%
+                const isBadEmotion = NEGATIVE_EMOTIONS.includes(label.toLowerCase());
+                const isBad = isLowAttention || isBadEmotion;
+
+                if (isBad) {
+                    badStreakRef.current += 1;
+                } else {
+                    badStreakRef.current = 0;
+                }
+
+                // show banner after ~6s of bad streak
+                setLowAttention(badStreakRef.current >= 2);
+
+                // trigger micro-break after ~9s of bad streak
+                if (badStreakRef.current >= 3 && !microBreakOpen) {
+                    triggerMicroBreak();
+                }
+            }
+        },
+        [microBreakOpen, triggerMicroBreak]
+    );
+
     const onTrackingChange = useCallback((running: boolean) => {
         setTrackingActive(running);
         if (running) {
-            setEmotionLabel('neutral'); // default status immediately on start
+            setEmotionLabel("neutral");
         } else {
-            setEmotionLabel(''); // hide on pause/stop
-            lowStartRef.current = null;
+            setEmotionLabel("");
+            badStreakRef.current = 0;
             setLowAttention(false);
         }
     }, []);
@@ -374,7 +509,7 @@ export default function StudentLessonPlayer() {
                 <div className="mb-4 rounded-2xl bg-[#E7F0F0] px-4 py-3 flex items-center justify-between">
                     <button
                         className="inline-flex items-center gap-2 text-gray-700 hover:underline"
-                        onClick={() => navigate('/')}
+                        onClick={() => navigate("/")}
                     >
                         <GraduationCap className="h-5 w-5" />
                         Back to Lessons
@@ -393,19 +528,30 @@ export default function StudentLessonPlayer() {
                 <div className="grid grid-cols-1 lg:grid-cols-[1fr_350px] gap-6">
                     {/* LEFT: video & controls */}
                     <div className="bg-[#FBF3DB] rounded-3xl p-4 md:p-6">
-                        <h1 className="text-2xl md:text-3xl font-bold mb-4 text-gray-800">{data.title}</h1>
+                        <h1 className="text-2xl md:text-3xl font-bold mb-4 text-gray-800">
+                            {data.title}
+                        </h1>
 
                         <div className="rounded-3xl overflow-hidden bg-black border border-black/10">
-                            <div id="yt-player" ref={containerRef} className="w-full aspect-video" />
+                            <div
+                                id="yt-player"
+                                ref={containerRef}
+                                className="w-full aspect-video"
+                            />
                         </div>
 
                         {/* Progress */}
                         <div className="mt-4">
-                            <div className="text-sm font-medium text-gray-700 mb-2">Lesson Progress</div>
+                            <div className="text-sm font-medium text-gray-700 mb-2">
+                                Lesson Progress
+                            </div>
                             <div className="w-full h-3 bg-gray-300 rounded-full overflow-hidden">
                                 <div
                                     className="h-full bg-green-300"
-                                    style={{ width: `${percent}%`, transition: 'width .25s linear' }}
+                                    style={{
+                                        width: `${percent}%`,
+                                        transition: "width .25s linear",
+                                    }}
                                 />
                             </div>
                             <div className="mt-1 text-xs text-gray-600">{percent}%</div>
@@ -413,17 +559,29 @@ export default function StudentLessonPlayer() {
 
                         {/* Navigation */}
                         <div className="mt-6 flex flex-col sm:flex-row gap-3">
-                            <Button variant="outline" className="flex-1" onClick={() => navigate('/')}>
+                            <Button
+                                variant="outline"
+                                className="flex-1"
+                                onClick={() => navigate("/")}
+                            >
                                 <ChevronLeft className="h-4 w-4 mr-2" />
                                 Back to Lessons
                             </Button>
                             {hasQuiz ? (
-                                <Button className="flex-1" onClick={() => navigate(`/student/lesson/${data.id}/quiz`)}>
+                                <Button
+                                    className="flex-1"
+                                    onClick={() =>
+                                        navigate(`/student/lesson/${data.id}/quiz`)
+                                    }
+                                >
                                     Go to Quiz
                                     <ChevronRight className="h-4 w-4 ml-2" />
                                 </Button>
                             ) : (
-                                <Button className="flex-1" onClick={() => navigate('/student')}>
+                                <Button
+                                    className="flex-1"
+                                    onClick={() => navigate("/student")}
+                                >
                                     Next Lesson
                                     <ChevronRight className="h-4 w-4 ml-2" />
                                 </Button>
@@ -433,21 +591,28 @@ export default function StudentLessonPlayer() {
 
                     {/* RIGHT: emotion tracker and quiz CTA */}
                     <div className="bg-[#B9DBFF] rounded-3xl p-4 md:p-6">
-                        <h2 className="text-lg md:text-xl font-bold text-gray-800 mb-4">How you’re doing!</h2>
+                        <h2 className="text-lg md:text-xl font-bold text-gray-800 mb-4">
+                            How you’re doing!
+                        </h2>
 
-                        {/* Optional in-session cue */}
+                        {/* In-session cue */}
                         {lowAttention && (
                             <div className="mb-3 text-sm bg-yellow-100 border border-yellow-300 text-yellow-800 rounded-md px-3 py-2">
-                                Noticing low attention. Let’s take a tiny break or try a different activity. ✨
+                                Noticing low attention. Let’s take a tiny break or try a
+                                different activity. ✨
                             </div>
                         )}
 
-                        {/* Status shown ONLY when tracking; defaults to neutral on start */}
+                        {/* Status shown ONLY when tracking */}
                         {trackingActive && (
                             <div className="flex items-center gap-3 mb-2">
-                                <span className="text-3xl">{getEmotionEmoji(emotionLabel || 'neutral')}</span>
+                <span className="text-3xl">
+                  {getEmotionEmoji(emotionLabel || "neutral")}
+                </span>
                                 <div>
-                                    <div className="text-sm text-gray-700">You seem {emotionLabel || 'neutral'}!</div>
+                                    <div className="text-sm text-gray-700">
+                                        You seem {emotionLabel || "neutral"}!
+                                    </div>
                                     <div className="text-xs text-gray-600">Live from camera</div>
                                 </div>
                             </div>
@@ -462,14 +627,22 @@ export default function StudentLessonPlayer() {
                             />
                         </Card>
 
-                        {/* Quiz CTA instead of inline quiz player */}
+                        {/* Quiz CTA */}
                         {hasQuiz && (
                             <Card className="mt-6 p-3">
-                                <h3 className="text-lg font-semibold mb-2">Ready for a quick quiz?</h3>
+                                <h3 className="text-lg font-semibold mb-2">
+                                    Ready for a quick quiz?
+                                </h3>
                                 <p className="text-sm text-gray-700 mb-3">
-                                    When you finish this lesson, you can test what you learned with a short quiz.
+                                    When you finish this lesson, you can test what you learned
+                                    with a short quiz.
                                 </p>
-                                <Button className="w-full" onClick={() => navigate(`/student/lesson/${data.id}/quiz`)}>
+                                <Button
+                                    className="w-full"
+                                    onClick={() =>
+                                        navigate(`/student/lesson/${data.id}/quiz`)
+                                    }
+                                >
                                     Go to Quiz
                                 </Button>
                             </Card>
@@ -477,6 +650,32 @@ export default function StudentLessonPlayer() {
                     </div>
                 </div>
             </div>
+
+            {/* Micro-break overlay for lesson */}
+            <MicroBreakOverlay
+                open={microBreakOpen}
+                content={microBreakContent || undefined}
+                onContinue={() => {
+                    closeMicroBreak();
+                }}
+                onSmallBreak={() => {
+                    if (sessionIdRef.current) {
+                        const now = Date.now();
+                        if (
+                            !lastStudentBreakAlertRef.current ||
+                            now - lastStudentBreakAlertRef.current > 60_000
+                        ) {
+                            lastStudentBreakAlertRef.current = now;
+                            sessionService
+                                .raiseAttentionAlert(sessionIdRef.current, "student_break")
+                                .catch((err: any) =>
+                                    console.error("lesson alert student_break failed", err)
+                                );
+                        }
+                    }
+                    // overlay stays open; child can press “Okay, continue” later
+                }}
+            />
         </div>
     );
 }
