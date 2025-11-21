@@ -6,6 +6,7 @@ import ReportFilters from '@/components/teacher/ReportFilters';
 import TeacherLessonCompletion from '@/components/teacher/TeacherLessonCompletion';
 import TeacherEmotionSummary from '@/components/teacher/TeacherEmotionSummary';
 import TeacherAttentionSummary from '@/components/teacher/TeacherAttentionSummary';
+import TeacherQuizSummary from '@/components/teacher/TeacherQuizSummary';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function TeacherReportsPage() {
@@ -49,7 +50,7 @@ export default function TeacherReportsPage() {
                         <TabsTrigger value="lesson-completion">Lesson Completion</TabsTrigger>
                         <TabsTrigger value="emotion-summary">Emotion Summary</TabsTrigger>
                         <TabsTrigger value="attention-summary">Attention Summary</TabsTrigger>
-                        <TabsTrigger value="quizzes" disabled>Quizzes (coming soon)</TabsTrigger>
+                        <TabsTrigger value="quizzes">Quiz Results</TabsTrigger>
                     </TabsList>
 
                     <TabsContent value="lesson-completion" className="space-y-6">
@@ -64,8 +65,8 @@ export default function TeacherReportsPage() {
                         <TeacherAttentionSummary studentId={studentId} from={from} to={to} timezone={timezone} />
                     </TabsContent>
 
-                    <TabsContent value="quizzes">
-                        {/* Placeholder only */}
+                    <TabsContent value="quizzes" className="space-y-6">
+                        <TeacherQuizSummary studentId={studentId} from={from} to={to} />
                     </TabsContent>
                 </Tabs>
             </main>

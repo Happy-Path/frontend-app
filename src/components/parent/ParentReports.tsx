@@ -4,11 +4,18 @@ import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 import { parentService } from "@/services/parentService";
 import TeacherLessonCompletion from "@/components/teacher/TeacherLessonCompletion";
 import TeacherEmotionSummary from "@/components/teacher/TeacherEmotionSummary";
 import TeacherAttentionSummary from "@/components/teacher/TeacherAttentionSummary";
+import TeacherQuizSummary from "@/components/teacher/TeacherQuizSummary";
 
 export default function ParentReports() {
     const { data: children = [], isLoading } = useQuery({
@@ -26,9 +33,7 @@ export default function ParentReports() {
         return d.toISOString().slice(0, 10);
     }, []);
 
-    const [selectedChildId, setSelectedChildId] = useState<string | null>(
-        null
-    );
+    const [selectedChildId, setSelectedChildId] = useState<string | null>(null);
     const [from, setFrom] = useState<string>(weekAgo);
     const [to, setTo] = useState<string>(today);
     const [timezone, setTimezone] = useState<string>("+05:30");
@@ -47,7 +52,7 @@ export default function ParentReports() {
             </h2>
             <p className="text-sm text-gray-600">
                 Select your child and the time range to view their
-                learning progress, attention, and emotions.
+                learning progress, attention, emotions, and quiz performance.
             </p>
 
             {/* Filters */}
@@ -131,9 +136,13 @@ export default function ParentReports() {
             {/* If no child, stop here */}
             {!selectedChildId ? null : (
                 <div className="space-y-6">
-                    <TeacherLessonCompletion
-                        studentId={selectedChildId}
-                    />
+                    {/* Scrollable Lesson Completion card */}
+                    <div className="max-h-[420px] overflow-y-auto pr-1">
+                        <TeacherLessonCompletion
+                            studentId={selectedChildId}
+                        />
+                    </div>
+
                     <TeacherAttentionSummary
                         studentId={selectedChildId}
                         from={from}
@@ -146,6 +155,15 @@ export default function ParentReports() {
                         to={to}
                         timezone={timezone}
                     />
+
+                    {/* Scrollable Quiz Results card (TeacherQuizSummary) */}
+                    <div className="max-h-[420px] overflow-y-auto pr-1">
+                        <TeacherQuizSummary
+                            studentId={selectedChildId}
+                            from={from}
+                            to={to}
+                        />
+                    </div>
                 </div>
             )}
         </div>

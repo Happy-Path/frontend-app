@@ -18,6 +18,22 @@ export type TeacherStudentSummary = {
     totalModules: number;
 };
 
+export type QuizSummaryRow = {
+    quizId: string;
+    quizTitle: string;
+    lessonId: string | null;
+    attempts: number;
+    completedAttempts: number;
+    abandonedAttempts: number;
+    bestScore: number;
+    avgScore: number;
+    lastScore: number;
+    firstAttemptAt: string;
+    lastAttemptAt: string;
+    passedAttempts: number;
+    passingScore: number;
+};
+
 export const reportsService = {
     learnerDaily: async (
         userId: string,
@@ -68,5 +84,23 @@ export const reportsService = {
         });
         if (!res.ok) throw new Error("Failed to fetch students");
         return res.json() as Promise<TeacherStudentSummary[]>;
+    },
+
+    // 🔹 Quiz summary for learner (teacher/parent)
+    learnerQuizzes: async (
+        userId: string,
+        params: { from?: string; to?: string } = {}
+    ): Promise<QuizSummaryRow[]> => {
+        const qs = new URLSearchParams();
+        if (params.from) qs.set("from", params.from);
+        if (params.to) qs.set("to", params.to);
+        const res = await fetch(
+            join(API_BASE, `/reports/learner/${userId}/quizzes?${qs.toString()}`),
+            {
+                headers: { "Content-Type": "application/json", ...auth() },
+            }
+        );
+        if (!res.ok) throw new Error("Failed to fetch quiz summary");
+        return res.json() as Promise<QuizSummaryRow[]>;
     },
 };

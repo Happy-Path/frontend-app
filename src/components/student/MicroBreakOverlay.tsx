@@ -9,26 +9,54 @@ export type MicroBreakContentLite = {
     boosterText: string;
 };
 
-function extractVideoId(url: string): string | null {
-    try {
-        if (!url) return null;
-        const u = new URL(url);
+/**
+ * Robust YouTube video ID extractor for:
+ * - Full URLs (with or without protocol)
+ * - youtu.be short links
+ * - /watch?v=ID
+ * - /embed/ID
+ * - /shorts/ID
+ * - Raw video IDs (dQw4w9WgXcQ)
+ */
+function extractVideoId(raw: string): string | null {
+    if (!raw) return null;
 
-        // https://youtu.be/ID
+    const trimmed = raw.trim();
+
+    // If it's likely just a raw video ID (11-ish chars, no spaces)
+    if (/^[a-zA-Z0-9_-]{10,15}$/.test(trimmed)) {
+        return trimmed;
+    }
+
+    // Ensure we have a protocol so new URL() doesn't throw
+    let normalized = trimmed;
+    if (!/^https?:\/\//i.test(normalized)) {
+        normalized = `https://${normalized}`;
+    }
+
+    try {
+        const u = new URL(normalized);
+
+        // youtu.be/<id>
         if (u.hostname.includes("youtu.be")) {
-            return u.pathname.replace("/", "");
+            const pathId = u.pathname.replace("/", "").trim();
+            if (pathId) return pathId;
         }
 
-        // https://www.youtube.com/watch?v=ID or /embed/ID
         if (u.hostname.includes("youtube.com")) {
-            const v = u.searchParams.get("v");
-            if (v) return v;
-            const parts = u.pathname.split("/");
-            return parts[parts.length - 1] || null;
+            // https://www.youtube.com/watch?v=<id>
+            const vParam = u.searchParams.get("v");
+            if (vParam) return vParam;
+
+            // /embed/<id>, /shorts/<id>, /live/<id>, etc.
+            const parts = u.pathname.split("/").filter(Boolean);
+            const lastSegment = parts[parts.length - 1];
+            if (lastSegment) return lastSegment;
         }
 
         return null;
-    } catch {
+    } catch (e) {
+        console.warn("Invalid YouTube URL for micro-break:", raw, e);
         return null;
     }
 }

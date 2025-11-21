@@ -6,8 +6,32 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, Play, Video } from "lucide-react";
 import { toast } from "sonner";
+
+/** Extract a YouTube video ID from common URL formats */
+function getYoutubeId(url: string): string | null {
+    if (!url) return null;
+    try {
+        const u = new URL(url);
+        // youtu.be/<id>
+        if (u.hostname === "youtu.be") {
+            return u.pathname.slice(1) || null;
+        }
+        // www.youtube.com/watch?v=<id>
+        if (u.hostname.includes("youtube.com")) {
+            const v = u.searchParams.get("v");
+            if (v) return v;
+            // /embed/<id> or /v/<id>
+            const parts = u.pathname.split("/");
+            const maybeId = parts[parts.length - 1];
+            return maybeId || null;
+        }
+    } catch {
+        // fall through
+    }
+    return null;
+}
 
 const TeacherMicroBreakManager = () => {
     const qc = useQueryClient();
@@ -107,49 +131,53 @@ const TeacherMicroBreakManager = () => {
             <Card className="p-6 space-y-4">
                 <div>
                     <h2 className="text-xl font-bold mb-1">Manage Micro-Break Content</h2>
-                    <p className="text-sm text-gray-500">
-                        Add or update the mood-fixing video and booster message that appear
-                        during micro-breaks for students.
+                    <p className="text-sm text-muted-foreground">
+                        Create short calming clips with a positive message that students see
+                        during their micro-breaks.
                     </p>
                 </div>
 
                 <form onSubmit={onSubmit} className="space-y-4">
                     <div>
                         <label className="block text-sm font-medium mb-1">
-                            Title (for teachers)
+                            Title for this micro-break
                         </label>
                         <Input
                             value={form.title}
                             onChange={(e) =>
                                 setForm((f) => ({ ...f, title: e.target.value }))
                             }
-                            placeholder="Relaxing Music for Stress Relief"
+                            placeholder="A short friendly title"
                         />
                     </div>
 
                     <div>
                         <label className="block text-sm font-medium mb-1">
-                            YouTube Video Link
+                            YouTube video link
                         </label>
                         <Input
                             value={form.youtubeUrl}
                             onChange={(e) =>
                                 setForm((f) => ({ ...f, youtubeUrl: e.target.value }))
                             }
-                            placeholder="https://www.youtube.com/watch?v=..."
+                            placeholder="YouTube URL"
                         />
+                        <p className="mt-1 text-[11px] text-muted-foreground">
+                            Any standard YouTube link is fine (e.g. watch, share, or short
+                            link).
+                        </p>
                     </div>
 
                     <div>
                         <label className="block text-sm font-medium mb-1">
-                            Positive Emotion Booster
+                            Positive booster message
                         </label>
                         <Textarea
                             value={form.boosterText}
                             onChange={(e) =>
                                 setForm((f) => ({ ...f, boosterText: e.target.value }))
                             }
-                            placeholder="This message will appear below the video…"
+                            placeholder="A short, kind message (shown under the video.)"
                             className="min-h-[100px]"
                         />
                     </div>
@@ -160,7 +188,7 @@ const TeacherMicroBreakManager = () => {
                             className="flex-1"
                             disabled={createMutation.isPending || updateMutation.isPending}
                         >
-                            {editingId ? "Save Changes" : "Add Content"}
+                            {editingId ? "Save changes" : "+ Add micro-break"}
                         </Button>
                         {editingId && (
                             <Button
@@ -179,67 +207,91 @@ const TeacherMicroBreakManager = () => {
             {/* RIGHT: Library */}
             <Card className="p-6 space-y-4">
                 <div>
-                    <h2 className="text-xl font-bold mb-1">Current Content Library</h2>
-                    <p className="text-sm text-gray-500">
-                        These items are used randomly during micro-breaks for students.
+                    <h2 className="text-xl font-bold mb-1">Content Library</h2>
+                    <p className="text-sm text-muted-foreground">
+                        These items are randomly shown during micro-breaks.
                     </p>
                 </div>
 
                 {isLoading ? (
-                    <div className="text-sm text-gray-500">Loading…</div>
+                    <div className="text-sm text-muted-foreground">Loading…</div>
                 ) : items.length === 0 ? (
-                    <div className="text-sm text-gray-500">
+                    <div className="text-sm text-muted-foreground">
                         No micro-break content yet. Add your first calming video on the
                         left.
                     </div>
                 ) : (
-                    <div className="space-y-3">
-                        {items.map((item) => (
-                            <div
-                                key={item.id}
-                                className="flex items-start gap-3 rounded-lg border bg-gray-50 px-4 py-3"
-                            >
-                                <div className="h-16 w-28 rounded-md overflow-hidden bg-gray-200 flex-shrink-0">
-                                    {/* simple thumbnail placeholder (no external calls) */}
-                                    <div className="w-full h-full flex items-center justify-center text-xs text-gray-600">
-                                        Video
+                    <div className="space-y-3 max-h-[480px] overflow-y-auto pr-1">
+                        {items.map((item) => {
+                            const videoId = getYoutubeId(item.youtubeUrl);
+                            const thumbUrl = videoId
+                                ? `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`
+                                : null;
+
+                            return (
+                                <div
+                                    key={item.id}
+                                    className="flex items-start gap-3 rounded-xl border bg-white/80 px-4 py-3 shadow-xs"
+                                >
+                                    {/* Thumbnail / preview */}
+                                    <div className="h-20 w-32 rounded-lg overflow-hidden bg-slate-100 flex-shrink-0 relative">
+                                        {thumbUrl ? (
+                                            <>
+                                                <img
+                                                    src={thumbUrl}
+                                                    alt={item.title}
+                                                    className="w-full h-full object-cover"
+                                                />
+                                                <div className="absolute inset-0 bg-black/10" />
+                                                <div className="absolute inset-0 flex items-center justify-center">
+                                                    <Play className="h-6 w-6 text-white drop-shadow-[0_0_4px_rgba(0,0,0,0.4)]" />
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <div className="w-full h-full flex flex-col items-center justify-center text-[11px] text-slate-500 gap-1">
+                                                <Video className="h-5 w-5" />
+                                                <span>Preview not available</span>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Text content */}
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center justify-between gap-2">
+                                            <h3 className="text-sm font-semibold truncate">
+                                                {item.title}
+                                            </h3>
+                                        </div>
+                                        <p className="text-xs text-slate-700 mt-1 line-clamp-2">
+                                            “{item.boosterText}”
+                                        </p>
+                                        <p className="text-[10px] text-slate-400 mt-1 break-all">
+                                            {item.youtubeUrl}
+                                        </p>
+                                    </div>
+
+                                    {/* Actions */}
+                                    <div className="flex flex-col items-center gap-2 ml-1">
+                                        <button
+                                            type="button"
+                                            onClick={() => startEdit(item)}
+                                            className="p-1.5 rounded-full hover:bg-slate-100 transition-colors"
+                                            title="Edit"
+                                        >
+                                            <Pencil className="h-4 w-4 text-slate-600" />
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleDelete(item.id)}
+                                            className="p-1.5 rounded-full hover:bg-red-50 transition-colors"
+                                            title="Delete"
+                                        >
+                                            <Trash2 className="h-4 w-4 text-red-500" />
+                                        </button>
                                     </div>
                                 </div>
-
-                                <div className="flex-1 min-w-0">
-                                    <div className="flex items-center justify-between gap-2">
-                                        <h3 className="text-sm font-semibold truncate">
-                                            {item.title}
-                                        </h3>
-                                    </div>
-                                    <p className="text-xs text-gray-600 mt-1 line-clamp-2">
-                                        “{item.boosterText}”
-                                    </p>
-                                    <p className="text-[10px] text-gray-400 mt-1 break-all">
-                                        {item.youtubeUrl}
-                                    </p>
-                                </div>
-
-                                <div className="flex flex-col items-center gap-2 ml-1">
-                                    <button
-                                        type="button"
-                                        onClick={() => startEdit(item)}
-                                        className="p-1 rounded-full hover:bg-gray-200"
-                                        title="Edit"
-                                    >
-                                        <Pencil className="h-4 w-4 text-gray-600" />
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => handleDelete(item.id)}
-                                        className="p-1 rounded-full hover:bg-red-50"
-                                        title="Delete"
-                                    >
-                                        <Trash2 className="h-4 w-4 text-red-500" />
-                                    </button>
-                                </div>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 )}
             </Card>

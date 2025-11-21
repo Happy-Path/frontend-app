@@ -73,7 +73,7 @@ const ContinueLearning: React.FC = () => {
     } = useQuery<ProgressRow[]>({
         queryKey: ["continue-progress-me"],
         queryFn: () => progressService.getMyProgress(),
-        enabled: hasToken, // ensures API is called after login
+        enabled: hasToken,
     });
 
     // Index progress by lessonId
@@ -94,9 +94,6 @@ const ContinueLearning: React.FC = () => {
             .map((lesson) => {
                 const prog = progressByLessonId[lesson._id];
 
-                // Derive percent:
-                // 1) Prefer backend 'percent' if present
-                // 2) Fallback to positionSec/durationSec if needed
                 let rawPercent = 0;
 
                 if (prog && typeof prog.percent === "number") {
@@ -125,11 +122,7 @@ const ContinueLearning: React.FC = () => {
                     isCompleted,
                 };
             })
-            // ✅ Only show lessons:
-            // - with some progress (percent > 0)
-            // - and not completed (percent < 98 and !completed)
             .filter((row) => row.isStarted && !row.isCompleted)
-            // Show those closest to completion first
             .sort((a, b) => b.percent - a.percent);
     }, [lessons, progressByLessonId]);
 
@@ -143,15 +136,14 @@ const ContinueLearning: React.FC = () => {
     };
 
     const handleContinueClick = (lessonId: string) => {
-        // ✅ Use the correct route: /student/lesson/:id
         navigate(`/student/lesson/${lessonId}`);
     };
 
     return (
-        <div className="bg-white p-6 rounded-xl shadow-md mb-6">
-            <div className="flex items-center justify-between mb-4">
+        <div className="rounded-2xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white p-6 shadow-sm">
+            <div className="mb-4 flex items-center justify-between gap-3">
                 <div>
-                    <h2 className="text-2xl font-bold text-happy-700">
+                    <h2 className="text-2xl font-bold text-slate-900">
                         Continue Learning
                     </h2>
                     <p className="text-xs text-muted-foreground">
@@ -162,22 +154,27 @@ const ContinueLearning: React.FC = () => {
 
             {anyLoading ? (
                 <div className="flex justify-center py-6">
-                    <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-happy-600" />
+                    <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-t-2 border-emerald-500" />
                 </div>
             ) : anyError ? (
-                <p className="text-sm text-red-600">
-                    Could not load your lessons right now.
-                </p>
+                <Card className="border-rose-100 bg-rose-50">
+                    <CardContent className="py-4 text-sm text-rose-700">
+                        Could not load your lessons right now. Please try again in a
+                        little while.
+                    </CardContent>
+                </Card>
             ) : !user ? (
                 <p className="text-sm text-muted-foreground">
-                    Login as a student to see your lessons.
+                    Log in as a student to see your lessons.
                 </p>
             ) : !uncompletedLessons.length ? (
-                <p className="text-sm text-muted-foreground">
-                    Great job! There are no uncompleted lessons right now.
-                </p>
+                <Card className="border-emerald-100 bg-emerald-50/70">
+                    <CardContent className="py-4 text-sm text-emerald-800">
+                        🎉 Great job! There are no uncompleted lessons right now.
+                    </CardContent>
+                </Card>
             ) : (
-                <div className="relative">
+                <div className="relative mt-2">
                     {/* Left/right buttons (desktop) */}
                     {uncompletedLessons.length > 2 && (
                         <>
@@ -185,7 +182,7 @@ const ContinueLearning: React.FC = () => {
                                 type="button"
                                 variant="outline"
                                 size="icon"
-                                className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 z-10 rounded-full shadow-sm bg-white/90"
+                                className="absolute left-0 top-1/2 hidden -translate-y-1/2 rounded-full bg-white/90 shadow-sm md:flex"
                                 onClick={() => scrollBy(-280)}
                             >
                                 <ChevronLeft className="h-4 w-4" />
@@ -194,7 +191,7 @@ const ContinueLearning: React.FC = () => {
                                 type="button"
                                 variant="outline"
                                 size="icon"
-                                className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 z-10 rounded-full shadow-sm bg-white/90"
+                                className="absolute right-0 top-1/2 hidden -translate-y-1/2 rounded-full bg-white/90 shadow-sm md:flex"
                                 onClick={() => scrollBy(280)}
                             >
                                 <ChevronRight className="h-4 w-4" />
@@ -205,36 +202,44 @@ const ContinueLearning: React.FC = () => {
                     {/* Scrollable row */}
                     <div
                         ref={scrollRef}
-                        className="flex gap-4 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent"
+                        className="flex gap-4 overflow-x-auto pb-2 pr-1 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-slate-300"
                     >
                         {uncompletedLessons.map(({ lesson, percent }) => (
                             <div
                                 key={lesson._id}
-                                className="min-w-[260px] max-w-[280px] flex-shrink-0"
+                                className="flex-shrink-0 min-w-[260px] max-w-[280px]"
                             >
-                                <Card className="h-full flex flex-col hover:shadow-lg transition-shadow">
-                                    <CardHeader className="pb-2">
-                                        <CardTitle className="text-lg line-clamp-2">
+                                <Card className="flex h-full flex-col rounded-2xl border border-slate-200 bg-white shadow-[0_6px_16px_rgba(15,23,42,0.06)] transition-all hover:-translate-y-1 hover:shadow-[0_10px_24px_rgba(15,23,42,0.10)]">
+                                    <CardHeader className="pb-2 pt-4">
+                                        <CardTitle className="line-clamp-2 text-lg font-semibold text-slate-900">
                                             {lesson.title}
                                         </CardTitle>
-                                        <CardDescription className="line-clamp-2">
+                                        <CardDescription className="line-clamp-2 text-xs text-slate-600">
                                             {lesson.description}
                                         </CardDescription>
                                     </CardHeader>
-                                    <CardContent className="flex-1 flex flex-col gap-2 pb-2">
-                                        <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                    <CardContent className="flex flex-1 flex-col gap-2 pb-2">
+                                        <div className="flex items-center justify-between text-[11px] text-muted-foreground">
                       <span className="capitalize">
                         {lesson.category} • {lesson.level}
                       </span>
-                                            <Badge variant="outline" className="text-[10px] px-2">
+                                            <Badge
+                                                variant="outline"
+                                                className="border-emerald-200 bg-emerald-50 text-[10px] font-semibold text-emerald-700"
+                                            >
                                                 {percent}% done
                                             </Badge>
                                         </div>
-                                        <Progress value={percent} className="h-1.5" />
+
+                                        {/* Green progress bar (completed part green, rest ash) */}
+                                        <Progress
+                                            value={percent}
+                                            className="h-2 rounded-full bg-slate-200 [&>div]:bg-gradient-to-r [&>div]:from-emerald-400 [&>div]:to-emerald-500"
+                                        />
                                     </CardContent>
-                                    <div className="px-4 pb-4 mt-auto">
+                                    <div className="mt-auto px-4 pb-4">
                                         <Button
-                                            className="w-full"
+                                            className="w-full bg-emerald-500 text-white hover:bg-emerald-600"
                                             size="sm"
                                             type="button"
                                             onClick={() => handleContinueClick(lesson._id)}

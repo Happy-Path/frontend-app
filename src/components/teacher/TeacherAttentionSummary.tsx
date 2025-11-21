@@ -1,8 +1,8 @@
 // src/components/teacher/TeacherAttentionSummary.tsx
-import { useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { reportsService } from '@/services/reportsService';
-import { Card } from '@/components/ui/card';
+import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { reportsService } from "@/services/reportsService";
+import { Card } from "@/components/ui/card";
 import {
     ResponsiveContainer,
     LineChart,
@@ -14,22 +14,33 @@ import {
     Bar,
     Legend,
     CartesianGrid,
-} from 'recharts';
+} from "recharts";
 
-type Props = { studentId: string | null; from: string; to: string; timezone: string };
-
-// Palette: Low = red, Medium = amber, High = green, Avg line = sky
-const COLORS = {
-    avg:  '#0EA5E9', // sky-500
-    low:  '#EF4444', // red-500
-    med:  '#F59E0B', // amber-500
-    high: '#10B981', // emerald-500
+type Props = {
+    studentId: string | null;
+    from: string;
+    to: string;
+    timezone: string;
 };
 
-export default function TeacherAttentionSummary({ studentId, from, to, timezone }: Props) {
+// Softer palette: Low = soft red, Medium = soft amber, High = soft green, Avg = soft blue
+const COLORS = {
+    avg:  "#93C5FD", // soft blue
+    low:  "#FCA5A5", // soft red
+    med:  "#FCD34D", // soft yellow/amber
+    high: "#6EE7B7", // soft green
+};
+
+export default function TeacherAttentionSummary({
+                                                    studentId,
+                                                    from,
+                                                    to,
+                                                    timezone,
+                                                }: Props) {
     const { data, isLoading, error } = useQuery({
-        queryKey: ['daily-attention', studentId, from, to, timezone],
-        queryFn: () => reportsService.learnerDaily(studentId!, { from, to, timezone }),
+        queryKey: ["daily-attention", studentId, from, to, timezone],
+        queryFn: () =>
+            reportsService.learnerDaily(studentId!, { from, to, timezone }),
         enabled: !!studentId,
     });
 
@@ -49,37 +60,75 @@ export default function TeacherAttentionSummary({ studentId, from, to, timezone 
         <Card className="p-4 space-y-6">
             <h2 className="text-xl font-semibold">Attention Summary (Daily)</h2>
 
-            {!studentId && <div className="text-sm text-gray-500">Select a student to view.</div>}
-            {studentId && isLoading && <div className="text-sm text-gray-500">Loading…</div>}
-            {error && <div className="text-sm text-red-600">Failed to load report.</div>}
+            {!studentId && (
+                <div className="text-sm text-gray-500">
+                    Select a student to view.
+                </div>
+            )}
+            {studentId && isLoading && (
+                <div className="text-sm text-gray-500">Loading…</div>
+            )}
+            {error && (
+                <div className="text-sm text-red-600">
+                    Failed to load attention report.
+                </div>
+            )}
             {studentId && data && data.length === 0 && (
-                <div className="text-sm text-gray-600">No data for the selected range.</div>
+                <div className="text-sm text-gray-600">
+                    No data for the selected range.
+                </div>
             )}
 
             {studentId && data && data.length > 0 && (
                 <>
-                    {/* Average attention line */}
-                    <div className="h-[340px]">
+                    {/* Average attention line (0–1) */}
+                    <div className="h-[320px]">
                         <ResponsiveContainer width="100%" height="100%">
-                            <LineChart data={rows} margin={{ top: 8, right: 16, bottom: 8, left: 0 }}>
-                                <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="date" />
-                                <YAxis domain={[0, 1]} />
+                            <LineChart
+                                data={rows}
+                                margin={{ top: 10, right: 20, left: 0, bottom: 6 }}
+                            >
+                                <CartesianGrid
+                                    strokeDasharray="4 4"
+                                    stroke="#E5E7EB"
+                                />
+                                <XAxis
+                                    dataKey="date"
+                                    tick={{ fill: "#6B7280", fontSize: 12 }}
+                                    tickLine={false}
+                                />
+                                <YAxis
+                                    domain={[0, 1]}
+                                    tick={{ fill: "#6B7280", fontSize: 12 }}
+                                    tickLine={false}
+                                    axisLine={false}
+                                />
                                 <Tooltip
-                                    formatter={(value, name) =>
-                                        name === 'avg'
-                                            ? [Number(value as number).toFixed(2), 'Average']
-                                            : [value as number, name]
-                                    }
+                                    contentStyle={{
+                                        borderRadius: "10px",
+                                        border: "none",
+                                        boxShadow:
+                                            "0 4px 14px rgba(0,0,0,0.12)",
+                                    }}
+                                    formatter={(value, name) => [
+                                        Number(value as number).toFixed(2),
+                                        "Average attention",
+                                    ]}
                                     labelFormatter={(label) => `${label}`}
                                 />
-                                <Legend formatter={(v) => (v === 'avg' ? 'Average' : v)} />
+                                <Legend
+                                    formatter={() => "Average attention"}
+                                    wrapperStyle={{
+                                        paddingTop: 8,
+                                        color: "#374151",
+                                        fontSize: 12,
+                                    }}
+                                />
                                 <Line
                                     type="monotone"
                                     dataKey="avg"
-                                    name="Average"
                                     stroke={COLORS.avg}
-                                    strokeWidth={2}
+                                    strokeWidth={2.5}
                                     dot={false}
                                     activeDot={{ r: 4 }}
                                 />
@@ -87,28 +136,80 @@ export default function TeacherAttentionSummary({ studentId, from, to, timezone 
                         </ResponsiveContainer>
                     </div>
 
-                    {/* Bands stacked bar */}
-                    <div className="h-[380px]">
+                    {/* Bands stacked bar: Low / Medium / High % */}
+                    <div className="h-[360px]">
                         <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={rows} margin={{ top: 8, right: 16, bottom: 8, left: 0 }}>
-                                <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="date" />
-                                <YAxis domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
+                            <BarChart
+                                data={rows}
+                                margin={{ top: 10, right: 20, left: 0, bottom: 6 }}
+                            >
+                                <CartesianGrid
+                                    strokeDasharray="4 4"
+                                    stroke="#E5E7EB"
+                                />
+                                <XAxis
+                                    dataKey="date"
+                                    tick={{ fill: "#6B7280", fontSize: 12 }}
+                                    tickLine={false}
+                                />
+                                <YAxis
+                                    domain={[0, 100]}
+                                    tickFormatter={(v) => `${v}%`}
+                                    tick={{ fill: "#6B7280", fontSize: 12 }}
+                                    tickLine={false}
+                                    axisLine={false}
+                                />
                                 <Tooltip
-                                    formatter={(value, name) => [`${value as number}%`, name]}
+                                    contentStyle={{
+                                        borderRadius: "10px",
+                                        border: "none",
+                                        boxShadow:
+                                            "0 4px 14px rgba(0,0,0,0.12)",
+                                    }}
+                                    formatter={(value, name) => {
+                                        let label = name;
+                                        if (name === "lowPct") label = "Low attention";
+                                        if (name === "medPct") label = "Medium attention";
+                                        if (name === "highPct") label = "High attention";
+                                        return [`${value as number}%`, label];
+                                    }}
                                     labelFormatter={(label) => `${label}`}
                                 />
                                 <Legend
                                     formatter={(value) => {
-                                        if (value === 'lowPct') return 'Low %';
-                                        if (value === 'medPct') return 'Medium %';
-                                        if (value === 'highPct') return 'High %';
+                                        if (value === "lowPct") return "Low attention";
+                                        if (value === "medPct") return "Medium attention";
+                                        if (value === "highPct") return "High attention";
                                         return value;
                                     }}
+                                    wrapperStyle={{
+                                        paddingTop: 8,
+                                        color: "#374151",
+                                        fontSize: 12,
+                                    }}
                                 />
-                                <Bar dataKey="lowPct"  name="Low %"    stackId="band" fill={COLORS.low} />
-                                <Bar dataKey="medPct"  name="Medium %" stackId="band" fill={COLORS.med} />
-                                <Bar dataKey="highPct" name="High %"   stackId="band" fill={COLORS.high} />
+
+                                <Bar
+                                    dataKey="lowPct"
+                                    name="Low attention"
+                                    stackId="band"
+                                    fill={COLORS.low}
+                                    radius={[6, 6, 0, 0]}
+                                />
+                                <Bar
+                                    dataKey="medPct"
+                                    name="Medium attention"
+                                    stackId="band"
+                                    fill={COLORS.med}
+                                    radius={[6, 6, 0, 0]}
+                                />
+                                <Bar
+                                    dataKey="highPct"
+                                    name="High attention"
+                                    stackId="band"
+                                    fill={COLORS.high}
+                                    radius={[6, 6, 0, 0]}
+                                />
                             </BarChart>
                         </ResponsiveContainer>
                     </div>

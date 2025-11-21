@@ -1,4 +1,4 @@
-
+// src/pages/parent/Progress.tsx
 import React from 'react';
 import ParentProgress from '@/components/parent/ParentProgress';
 import Header from '@/components/Header';
